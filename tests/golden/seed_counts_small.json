@@ -1,0 +1,14 @@
+{
+ "study": 3,
+ "researcher": 12,
+ "participant": 60,
+ "device": 24,
+ "calibration": 570,
+ "enrollment": 61,
+ "session": 261,
+ "session_device": 517,
+ "recording": 460,
+ "channel": 1619,
+ "trial": 12907,
+ "trial_feature": 314368
+}

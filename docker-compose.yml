@@ -1,0 +1,25 @@
+# PostgreSQL 16 for local use. The database, user and password are all "labtrack",
+# which is what `labtrack` connects to when you give it no DSN.
+#
+#   docker compose up -d --wait            start it and wait until it accepts connections
+#   LABTRACK_PORT=5433 docker compose up -d --wait   if port 5432 is taken
+#   docker compose down -v                 stop it and delete its data
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: labtrack
+      POSTGRES_PASSWORD: labtrack
+      POSTGRES_DB: labtrack
+    ports:
+      - "${LABTRACK_PORT:-5432}:5432"
+    volumes:
+      - labtrack-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labtrack -d labtrack"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  labtrack-data:

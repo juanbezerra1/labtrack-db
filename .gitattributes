@@ -1,0 +1,12 @@
+# The checksums of the migrations and of exports/small/SHA256SUMS are computed on LF line endings.
+# Without these lines, Git on Windows may turn the files into CRLF and the checks would fail.
+* text=auto
+*.sql  text eol=lf
+*.csv  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.toml text eol=lf
+SHA256SUMS text eol=lf
+LICENSE text eol=lf

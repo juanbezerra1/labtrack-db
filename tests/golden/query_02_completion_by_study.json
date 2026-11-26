@@ -1,0 +1,49 @@
+{
+ "columns": [
+  "study",
+  "sessions",
+  "completed",
+  "cancelled",
+  "no_show",
+  "still_booked",
+  "completion_pct"
+ ],
+ "rows": [
+  [
+   "EEG-02",
+   61,
+   56,
+   5,
+   0,
+   0,
+   "91.8"
+  ],
+  [
+   "EMG-03",
+   80,
+   63,
+   7,
+   1,
+   9,
+   "88.7"
+  ],
+  [
+   "FFB-01",
+   120,
+   111,
+   5,
+   4,
+   0,
+   "92.5"
+  ],
+  [
+   "ALL STUDIES",
+   261,
+   230,
+   17,
+   5,
+   9,
+   "91.3"
+  ]
+ ]
+}
