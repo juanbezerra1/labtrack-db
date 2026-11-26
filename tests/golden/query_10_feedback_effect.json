@@ -1,0 +1,25 @@
+{
+ "columns": [
+  "group_label",
+  "values_used",
+  "feedback_on",
+  "feedback_off",
+  "difference"
+ ],
+ "rows": [
+  [
+   "control",
+   1559,
+   "4.342",
+   "4.517",
+   "-0.175"
+  ],
+  [
+   "intervention",
+   1279,
+   "3.717",
+   "4.539",
+   "-0.821"
+  ]
+ ]
+}

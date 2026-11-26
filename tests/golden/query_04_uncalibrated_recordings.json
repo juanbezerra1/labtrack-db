@@ -1,0 +1,32 @@
+{
+ "columns": [
+  "serial_no",
+  "kind",
+  "recordings",
+  "first_day",
+  "last_day"
+ ],
+ "rows": [
+  [
+   "SN-DYN-03",
+   "dynamometer",
+   25,
+   "2024-11-13",
+   "2025-03-17"
+  ],
+  [
+   "SN-EMG-03",
+   "emg_amplifier",
+   16,
+   "2025-05-12",
+   "2025-09-22"
+  ],
+  [
+   "SN-EEG-02",
+   "eeg_amplifier",
+   3,
+   "2025-04-14",
+   "2025-08-25"
+  ]
+ ]
+}

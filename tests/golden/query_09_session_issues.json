@@ -1,0 +1,24 @@
+{
+ "columns": [
+  "issue",
+  "sessions",
+  "avg_room_temp_c"
+ ],
+ "rows": [
+  [
+   "stimulator_reset",
+   6,
+   "23.7"
+  ],
+  [
+   "electrode_drift",
+   4,
+   "22.2"
+  ],
+  [
+   "late_start",
+   4,
+   "22.7"
+  ]
+ ]
+}

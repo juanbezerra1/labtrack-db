@@ -1,0 +1,4 @@
+study_key,study_code,title,started_on,ended_on,planned_visits,target_n
+1,FFB-01,Force feedback for myoelectric control,2024-03-04,2025-12-19,4,31
+2,EEG-02,Visual stimulus size and motor execution,2025-02-03,2026-08-28,4,24
+3,EMG-03,Biceps EMG during a fatigue protocol,2025-09-01,,4,14

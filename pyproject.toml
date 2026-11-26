@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "labtrack-db"
+version = "0.1.0"
+description = "A PostgreSQL schema for a biosignal lab: constraints, migrations, reproducible synthetic data, teaching queries and an EXPLAIN lab."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Juan Bezerra" }]
+keywords = ["postgresql", "sql", "database-design", "migrations", "explain", "window-functions", "synthetic-data"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Database",
+]
+dependencies = ["psycopg[binary]>=3.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.5", "mypy>=1.8"]
+
+[project.urls]
+Homepage = "https://github.com/juanbezerra1/labtrack-db"
+Issues = "https://github.com/juanbezerra1/labtrack-db/issues"
+
+[project.scripts]
+labtrack = "labtrack.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/labtrack"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]     # the SQL in the tests reads better on one long line than cut in pieces
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true

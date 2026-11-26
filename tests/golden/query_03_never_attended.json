@@ -1,0 +1,16 @@
+{
+ "columns": [
+  "participant",
+  "study",
+  "group_label",
+  "enrolled_on"
+ ],
+ "rows": [
+  [
+   "P0043",
+   "EMG-03",
+   "intervention",
+   "2026-10-31"
+  ]
+ ]
+}
