@@ -544,6 +544,7 @@ Indexes:
 | `qc` | text |  |  |  |
 | `n_trials` | bigint |  |  |  |
 | `n_valid_trials` | bigint |  |  |  |
+| `device_calibrated` | boolean |  |  | true when some passed calibration of the device covered the day of the recording (lab calendar day); false is a data-quality finding, see query 04. |
 
 ## bi.fact_session
 
@@ -567,7 +568,7 @@ Indexes:
 
 ## bi.fact_trial
 
-*view.* Fact: one row per trial, with two headline features (RMS and peak force) as columns.
+*view.* Fact: one row per trial, with the features of its modality as columns (NULL for a trial of another modality).
 
 | column | type | null | default | description |
 |---|---|---|---|---|
@@ -582,5 +583,9 @@ Indexes:
 | `duration_s` | numeric(6,3) |  |  |  |
 | `valid` | boolean |  |  |  |
 | `reject_reason` | text |  |  |  |
-| `rms_mean_uv` | numeric |  |  |  |
-| `peak_force_n` | numeric |  |  |  |
+| `rms_mean_uv` | numeric |  |  | EMG: root mean square amplitude, in microvolts, averaged over the channels. |
+| `peak_force_n` | numeric |  |  | Force: the highest force of the trial, in newtons. |
+| `force_cv_pct` | numeric |  |  | Force: coefficient of variation of the force in the hold phase, in percent. Lower is steadier. |
+| `mnf_hz` | numeric |  |  | EMG: mean frequency of the power spectrum, in hertz, averaged over the channels. |
+| `mdf_hz` | numeric |  |  | EMG: median frequency of the power spectrum, in hertz, averaged over the channels. |
+| `alpha_power_uv2` | numeric |  |  | EEG: band power at 8 to 13 Hz, in microvolts squared, averaged over the channels. |

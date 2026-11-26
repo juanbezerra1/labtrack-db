@@ -19,7 +19,7 @@ Também em português: [README.pt-BR.md](README.pt-BR.md)
 | Tables in schema `lab` | 13 |
 | Foreign keys between them | 13 |
 | Enum types | 6 |
-| Migrations | 12 |
+| Migrations | 13 |
 | Teaching queries | 12 |
 | EXPLAIN lessons | 8 |
 | Data-quality checks | 12 |
@@ -38,9 +38,9 @@ You need Python 3.10 or newer and a PostgreSQL 16 server. The easiest server is 
 git clone https://github.com/juanbezerra1/labtrack-db.git
 cd labtrack-db
 docker compose up -d --wait        # PostgreSQL 16 on localhost:5432 (user, password and database: labtrack)
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -e .
+python3 -m venv .venv              # Windows: py -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1   (cmd.exe: .venv\Scripts\activate.bat)
+python -m pip install -e .         # Windows: py -m pip install -e .
 labtrack migrate                   # creates the schema
 labtrack seed --scale small        # synthetic data, about 10 seconds
 labtrack check                     # the data-quality checks
@@ -89,6 +89,9 @@ Things that go differently on your machine:
 * **No Docker.** Use a PostgreSQL 16 you already have, with a user that may create databases:
   `export LABTRACK_DSN=postgresql://USER:PASSWORD@localhost:5432/labtrack` (PowerShell:
   `$env:LABTRACK_DSN = "..."`), then `labtrack createdb` and `labtrack migrate`. `psql` is not needed.
+* **PowerShell will not activate the environment** ("running scripts is disabled on this system"). Run
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once and open a new window, or use `cmd.exe` and
+  `.venv\Scripts\activate.bat`.
 
 ## The schema
 
@@ -353,6 +356,22 @@ without a database; a test checks that it is exactly what the current seed produ
 | `fact_recording.csv` | 460 | a recording |
 | `fact_trial.csv` | 12,907 | a trial |
 
+`fact_trial` carries the headline features of each trial as columns, so a report does not have to pivot the long
+`trial_feature` table. A feature belongs to one modality: the trials of the other modalities have an empty cell there.
+The EMG and EEG values are the mean of the recording's channels.
+
+| Column of `fact_trial` | Modality | Feature in `feature_def` | Unit |
+|---|---|---|---|
+| `rms_mean_uv` | emg | `rms` | uV |
+| `mnf_hz` | emg | `mnf` | Hz |
+| `mdf_hz` | emg | `mdf` | Hz |
+| `alpha_power_uv2` | eeg | `power_alpha` | uV^2 |
+| `peak_force_n` | force | `peak_force` | N |
+| `force_cv_pct` | force | `force_cv` | % |
+
+`fact_recording.device_calibrated` is `false` for a recording made on a day when no passed calibration of its device was
+valid: query 04 as a column that a report can filter on. In the `small` size it is `false` for 44 of the 460 recordings.
+
 ## Migrations
 
 The schema is built by numbered SQL files in [`migrations/`](migrations/), applied in order by a runner of under 200
@@ -373,19 +392,22 @@ $ labtrack status
   0010  applied   protocol_version_check
   0011  applied   protocol_version_validate
   0012  applied   recording_time_index
+  0013  applied   bi_more_columns
 ```
 
 Files 0008 to 0011 are a worked example of adding a `NOT NULL` column to a table in use without holding a strong lock
 for long: add the column, backfill it, add a `CHECK` as `NOT VALID`, validate it (a weaker lock) and set `NOT NULL`
 (PostgreSQL skips the scan because the validated `CHECK` already proves it). Each step is its own file because a
 migration is one transaction and its locks last until it ends. File 0012 builds an index with
-`CREATE INDEX CONCURRENTLY`, which cannot run inside a transaction, so the runner lets a file opt out. There are no
-down-migrations: a database in use rolls forward. [`docs/design-notes.md`](docs/design-notes.md#migrations) has the rest.
+`CREATE INDEX CONCURRENTLY`, which cannot run inside a transaction, so the runner lets a file opt out. File 0013 adds
+columns to two views with `CREATE OR REPLACE VIEW`, which may append columns but never rename or retype the existing
+ones, so a report that already reads the views keeps working. There are no down-migrations: a database in use rolls
+forward. [`docs/design-notes.md`](docs/design-notes.md#migrations) has the rest.
 
 ## Tests and CI
 
 ```bash
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"      # Windows: py -m pip install -e ".[dev]"
 export LABTRACK_TEST_DSN=postgresql://labtrack:labtrack@localhost:5432/postgres   # a user that may create databases
 pytest
 ```
@@ -403,7 +425,7 @@ service on Python 3.10 and 3.13.
 
 ## Command line
 
-`labtrack` is installed by `pip install -e .`; `python -m labtrack` does the same. `--dsn` goes before the command name;
+`labtrack` is installed by `python -m pip install -e .`; `python -m labtrack` (`py -m labtrack` on Windows) does the same. `--dsn` goes before the command name;
 without it the tool uses `$LABTRACK_DSN`, then `postgresql://labtrack:labtrack@localhost:5432/labtrack` (the Docker Compose database).
 
 | Command | What it does |
