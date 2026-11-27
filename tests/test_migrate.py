@@ -105,14 +105,22 @@ def test_two_runners_cannot_work_at_once(make_db: Callable[[], str], tmp_path: P
 
 def test_no_transaction_files_run_outside_a_transaction(make_db: Callable[[], str], tmp_path: Path) -> None:
     write(tmp_path, "0001_table.sql", "CREATE TABLE big (i integer);")
-    write(tmp_path, "0002_index.sql", "-- labtrack: no-transaction\n-- comment\nCREATE INDEX CONCURRENTLY big_i ON big (i);")
+    write(
+        tmp_path,
+        "0002_index.sql",
+        "-- labtrack: no-transaction\n-- comment\nCREATE INDEX CONCURRENTLY big_i ON big (i);",
+    )
     with connect(make_db()) as conn:
         assert migrate(conn, directory=tmp_path, log=quiet) == ["0001_table", "0002_index"]
         assert scalar(conn, "SELECT to_regclass('big_i')") == "big_i"
 
 
 def test_no_transaction_files_hold_exactly_one_statement(make_db: Callable[[], str], tmp_path: Path) -> None:
-    write(tmp_path, "0001_two.sql", "-- labtrack: no-transaction\nCREATE TABLE a (i integer);\nCREATE TABLE b (i integer);")
+    write(
+        tmp_path,
+        "0001_two.sql",
+        "-- labtrack: no-transaction\nCREATE TABLE a (i integer);\nCREATE TABLE b (i integer);",
+    )
     with connect(make_db()) as conn, pytest.raises(MigrationError, match="exactly one statement"):
         migrate(conn, directory=tmp_path, log=quiet)
 
@@ -166,14 +174,19 @@ def test_upgrading_a_database_that_already_has_data(make_db: Callable[[], str]) 
                                        ELSE '{}'::jsonb END
             FROM lab.participant;
         """)
-        assert not scalar(conn, "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'lab' "
-                                "AND table_name = 'session' AND column_name = 'protocol_version')")
+        assert not scalar(
+            conn,
+            "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'lab' "
+            "AND table_name = 'session' AND column_name = 'protocol_version')",
+        )
         migrate(conn, log=quiet)
         got = conn.execute("SELECT participant_id, protocol_version FROM lab.session ORDER BY 1").fetchall()
-        assert got == [(1, "v3"), (2, "v2"), (3, "v1")]   # no note means the first protocol
-        nullable, default = row(conn, 
+        assert got == [(1, "v3"), (2, "v2"), (3, "v1")]  # no note means the first protocol
+        nullable, default = row(
+            conn,
             "SELECT is_nullable, column_default FROM information_schema.columns "
-            "WHERE table_schema = 'lab' AND table_name = 'session' AND column_name = 'protocol_version'")
+            "WHERE table_schema = 'lab' AND table_name = 'session' AND column_name = 'protocol_version'",
+        )
         assert nullable == "NO" and default == "'v2'::text"
         assert scalar(conn, "SELECT convalidated FROM pg_constraint WHERE conname = 'session_protocol_format'")
 
@@ -185,8 +198,12 @@ def test_the_validate_step_does_not_block_readers_or_writers(make_db: Callable[[
         migrate(conn, target=10, log=quiet)
         with conn.transaction(force_rollback=True):
             conn.execute("ALTER TABLE lab.session VALIDATE CONSTRAINT session_protocol_format")
-            modes = {r[0] for r in conn.execute(
-                "SELECT mode FROM pg_locks WHERE pid = pg_backend_pid() AND relation = 'lab.session'::regclass")}
+            modes = {
+                r[0]
+                for r in conn.execute(
+                    "SELECT mode FROM pg_locks WHERE pid = pg_backend_pid() AND relation = 'lab.session'::regclass"
+                )
+            }
         assert "ShareUpdateExclusiveLock" in modes
         assert "AccessExclusiveLock" not in modes
 
@@ -207,7 +224,9 @@ def test_set_not_null_skips_its_own_scan_thanks_to_the_validated_check(make_db: 
 
 def test_the_concurrent_index_exists_and_is_valid(migrated_dsn: str) -> None:
     with connect(migrated_dsn) as conn:
-        valid = scalar(conn, "SELECT indisvalid FROM pg_index WHERE indexrelid = 'lab.recording_recorded_at_idx'::regclass")
+        valid = scalar(
+            conn, "SELECT indisvalid FROM pg_index WHERE indexrelid = 'lab.recording_recorded_at_idx'::regclass"
+        )
         assert valid
 
 
@@ -216,16 +235,16 @@ def test_roles_are_least_privilege(migrated_dsn: str) -> None:
         for role, may_write in (("labtrack_reader", False), ("labtrack_writer", True)):
             with conn.transaction(force_rollback=True):
                 conn.execute(f"SET LOCAL ROLE {role}")
-                conn.execute("SELECT count(*) FROM lab.study")                      # both may read
+                conn.execute("SELECT count(*) FROM lab.study")  # both may read
                 conn.execute("SELECT count(*) FROM bi.fact_session")
                 if may_write:
-                    conn.execute("DELETE FROM lab.trial_feature")                   # the writer may write...
+                    conn.execute("DELETE FROM lab.trial_feature")  # the writer may write...
                 else:
                     with pytest.raises(errors.InsufficientPrivilege), conn.transaction():
                         conn.execute("DELETE FROM lab.trial_feature")
         with conn.transaction(force_rollback=True):
             conn.execute("SET LOCAL ROLE labtrack_writer")
-            with pytest.raises(errors.InsufficientPrivilege), conn.transaction():   # ...but not change the schema
+            with pytest.raises(errors.InsufficientPrivilege), conn.transaction():  # ...but not change the schema
                 conn.execute("CREATE TABLE lab.sneaky (i integer)")
             with pytest.raises(errors.InsufficientPrivilege), conn.transaction():
                 conn.execute("DROP TABLE lab.study")
@@ -234,24 +253,32 @@ def test_roles_are_least_privilege(migrated_dsn: str) -> None:
 def test_every_table_and_view_has_a_comment(migrated_dsn: str) -> None:
     """Documentation that lives in the database: \\d+ shows it, and docs/data-dictionary.md is generated from it."""
     with connect(migrated_dsn) as conn:
-        no_comment = [f"{r[0]}.{r[1]}" for r in conn.execute(
-            """SELECT n.nspname, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        no_comment = [
+            f"{r[0]}.{r[1]}"
+            for r in conn.execute(
+                """SELECT n.nspname, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
                WHERE n.nspname IN ('lab', 'bi') AND c.relkind IN ('r', 'v', 'm') AND obj_description(c.oid, 'pg_class') IS NULL
-               ORDER BY 1, 2""")]
+               ORDER BY 1, 2"""
+            )
+        ]
         assert no_comment == [], no_comment
 
 
 def test_every_column_of_every_table_has_a_comment(migrated_dsn: str) -> None:
     """The data dictionary is generated from these comments, so a column without one is a hole in it."""
     with connect(migrated_dsn) as conn:
-        no_comment = [f"{r[0]}.{r[1]}.{r[2]}" for r in conn.execute(
-            """SELECT n.nspname, c.relname, a.attname
+        no_comment = [
+            f"{r[0]}.{r[1]}.{r[2]}"
+            for r in conn.execute(
+                """SELECT n.nspname, c.relname, a.attname
                FROM pg_attribute a
                JOIN pg_class c ON c.oid = a.attrelid
                JOIN pg_namespace n ON n.oid = c.relnamespace
                WHERE n.nspname = 'lab' AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
                  AND col_description(c.oid, a.attnum) IS NULL
-               ORDER BY 1, 2, a.attnum""")]
+               ORDER BY 1, 2, a.attnum"""
+            )
+        ]
         assert no_comment == [], no_comment
 
 
@@ -259,13 +286,17 @@ def test_every_foreign_key_has_an_index_that_serves_it(migrated_dsn: str) -> Non
     """PostgreSQL indexes primary keys and UNIQUE columns, never the referencing side of a foreign key.
     Without an index that starts with the key's first column, deleting a parent row scans the child table."""
     with connect(migrated_dsn) as conn:
-        unserved = [(r[0], r[1]) for r in conn.execute(
-            """SELECT c.conrelid::regclass::text, a.attname
+        unserved = [
+            (r[0], r[1])
+            for r in conn.execute(
+                """SELECT c.conrelid::regclass::text, a.attname
                FROM pg_constraint c
                JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
                WHERE c.contype = 'f' AND c.connamespace = 'lab'::regnamespace
                  AND NOT EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = c.conrelid AND i.indkey[0] = c.conkey[1])
-               ORDER BY 1, 2""")]
+               ORDER BY 1, 2"""
+            )
+        ]
     # lab.trial_feature(feature_id) is left unindexed on purpose: explain-lab/01 builds that index.
     assert unserved == [("lab.trial_feature", "feature_id")], unserved
 

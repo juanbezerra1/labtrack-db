@@ -23,8 +23,14 @@ from typing import Any
 from labtrack.db import connect, scalar
 from labtrack.explain import check_expectations, load_lessons, run_lesson, scale_of
 
-SETTINGS = ("shared_buffers", "work_mem", "effective_cache_size", "max_parallel_workers_per_gather", "jit",
-            "random_page_cost")
+SETTINGS = (
+    "shared_buffers",
+    "work_mem",
+    "effective_cache_size",
+    "max_parallel_workers_per_gather",
+    "jit",
+    "random_page_cost",
+)
 
 
 def installed_memory_gib() -> float | None:
@@ -57,16 +63,22 @@ def main(argv: list[str] | None = None) -> int:
                 result = run_lesson(conn, lesson)
                 problems = check_expectations(result)
                 if problems:
-                    print(f"lesson {lesson.number}: the plans are not as the lesson says on this database "
-                          f"(scale {scale}): {problems[0]}", file=sys.stderr)
+                    print(
+                        f"lesson {lesson.number}: the plans are not as the lesson says on this database "
+                        f"(scale {scale}): {problems[0]}",
+                        file=sys.stderr,
+                    )
                     return 1
                 if attempt == 0:
                     continue
                 for label, plan in result.explains.items():
                     samples.setdefault(label, []).append(plan.execution_ms)
             steps = {
-                label: {"median_ms": round(statistics.median(v), 1), "min_ms": round(min(v), 1),
-                        "max_ms": round(max(v), 1)}
+                label: {
+                    "median_ms": round(statistics.median(v), 1),
+                    "min_ms": round(min(v), 1),
+                    "max_ms": round(max(v), 1),
+                }
                 for label, v in samples.items()
             }
             lessons_out[str(lesson.number)] = {"title": lesson.title, "steps": steps}

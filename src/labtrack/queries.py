@@ -25,7 +25,7 @@ class Query:
     number: int
     title: str
     path: Path
-    variants: tuple[tuple[str, str], ...]   # (name, sql)
+    variants: tuple[tuple[str, str], ...]  # (name, sql)
 
     @property
     def stem(self) -> str:
@@ -40,8 +40,11 @@ def load_queries(directory: Path | None = None) -> list[Query]:
         if not title:
             raise ValueError(f"{path.name}: the first line must be '-- Query NN: title'")
         parts = VARIANT.split(text)
-        variants = (("default", text),) if len(parts) == 1 else tuple(
-            (parts[i], parts[i + 1].strip()) for i in range(1, len(parts), 2))
+        variants = (
+            (("default", text),)
+            if len(parts) == 1
+            else tuple((parts[i], parts[i + 1].strip()) for i in range(1, len(parts), 2))
+        )
         queries.append(Query(int(title.group(1)), title.group(2), path, variants))
     return queries
 
@@ -59,8 +62,10 @@ def format_table(columns: list[str], rows: list[tuple[Any, ...]]) -> str:
     """A plain-text table, like psql prints."""
     cells = [[("" if v is None else str(v)) for v in row] for row in rows]
     widths = [max([len(c)] + [len(r[i]) for r in cells]) for i, c in enumerate(columns)]
-    numeric = [all(isinstance(r[i], (int, float)) or r[i] is None or _is_number(r[i]) for r in rows) and bool(rows)
-               for i in range(len(columns))]
+    numeric = [
+        all(isinstance(r[i], (int, float)) or r[i] is None or _is_number(r[i]) for r in rows) and bool(rows)
+        for i in range(len(columns))
+    ]
 
     def line(values: list[str]) -> str:
         padded = (v.rjust(w) if numeric[i] else v.ljust(w) for i, (v, w) in enumerate(zip(values, widths, strict=True)))

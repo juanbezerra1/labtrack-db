@@ -17,8 +17,10 @@ def findings(conn: psycopg.Connection) -> dict[str, int]:
 
 
 def double_booked(conn: psycopg.Connection, s: Scene) -> None:
-    conn.execute("ALTER TABLE lab.session DROP CONSTRAINT session_room_no_overlap")   # DDL is transactional: undone at the end
-    s.lab.booked_session(s.world, visit_no=2, status="completed")                      # the same room at the same hours
+    conn.execute(
+        "ALTER TABLE lab.session DROP CONSTRAINT session_room_no_overlap"
+    )  # DDL is transactional: undone at the end
+    s.lab.booked_session(s.world, visit_no=2, status="completed")  # the same room at the same hours
 
 
 def out_of_order(conn: psycopg.Connection, s: Scene) -> None:
@@ -26,8 +28,9 @@ def out_of_order(conn: psycopg.Connection, s: Scene) -> None:
 
 
 def no_recording(conn: psycopg.Connection, s: Scene) -> None:
-    s.lab.booked_session(s.world, visit_no=2, starts_at=at("2024-02-12"), ends_at=at("2024-02-12", "10:30"),
-                         status="completed")
+    s.lab.booked_session(
+        s.world, visit_no=2, starts_at=at("2024-02-12"), ends_at=at("2024-02-12", "10:30"), status="completed"
+    )
 
 
 def recorded_on_another_day(conn: psycopg.Connection, s: Scene) -> None:
@@ -39,15 +42,15 @@ def session_cancelled_later(conn: psycopg.Connection, s: Scene) -> None:
 
 
 def trial_runs_past_the_end(conn: psycopg.Connection, s: Scene) -> None:
-    conn.execute("UPDATE lab.trial SET onset_s = 59 WHERE trial_id = %s", (s.trial,))     # 59 + 6 s in a 60 s recording
+    conn.execute("UPDATE lab.trial SET onset_s = 59 WHERE trial_id = %s", (s.trial,))  # 59 + 6 s in a 60 s recording
 
 
 def value_for_channel_nine(conn: psycopg.Connection, s: Scene) -> None:
-    conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 9, 1, 10.0)", (s.trial,))     # the recording has 4 channels
+    conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 9, 1, 10.0)", (s.trial,))  # the recording has 4 channels
 
 
 def alpha_power_on_an_emg_recording(conn: psycopg.Connection, s: Scene) -> None:
-    conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 1, 11, 5.0)", (s.trial,))     # feature 11 is an EEG one
+    conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 1, 11, 5.0)", (s.trial,))  # feature 11 is an EEG one
 
 
 def a_channel_goes_missing(conn: psycopg.Connection, s: Scene) -> None:
@@ -55,7 +58,9 @@ def a_channel_goes_missing(conn: psycopg.Connection, s: Scene) -> None:
 
 
 def withdrawal_moved_back(conn: psycopg.Connection, s: Scene) -> None:
-    conn.execute("UPDATE lab.participant SET withdrawn_on = '2024-01-20' WHERE participant_id = %s", (s.world.participant,))
+    conn.execute(
+        "UPDATE lab.participant SET withdrawn_on = '2024-01-20' WHERE participant_id = %s", (s.world.participant,)
+    )
 
 
 def retirement_moved_back(conn: psycopg.Connection, s: Scene) -> None:
