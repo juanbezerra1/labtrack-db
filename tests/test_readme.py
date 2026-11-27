@@ -291,6 +291,32 @@ def test_the_table_of_exports_matches_the_committed_csv_files(lang: str) -> None
 
 
 @pytest.mark.parametrize("lang", LANGS)
+def test_the_table_of_star_features_matches_the_catalogue_and_the_view(lang: str, small_dsn: str) -> None:
+    rows = tables(section(read(lang), TITLES[lang]["bi"]))[1][1]                 # the second table of the section
+    assert len(rows) == 6
+    with connect(small_dsn) as conn:
+        for cells in rows:
+            column, modality, feature, unit = (cell.strip("`") for cell in cells)
+            assert conn.execute("SELECT modality::text, unit FROM lab.feature_def WHERE name = %s",
+                                (feature,)).fetchone() == (modality, unit), column
+            # the column is filled for exactly the trials of its modality
+            assert scalar(conn, f"SELECT count(*) FROM bi.fact_trial WHERE ({column} IS NULL) = (modality = %s)",
+                          (modality,)) == 0, column
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_the_number_of_uncalibrated_recordings_in_the_text_is_true(lang: str, small_dsn: str) -> None:
+    text = " ".join(section(read(lang), TITLES[lang]["bi"]).split())
+    found = re.search(r"`false` for (\d+) of the (\d+) recordings" if lang == "en"
+                      else r"`false` em (\d+) das (\d+) gravações", text)
+    assert found, "the sentence about device_calibrated is missing"
+    with connect(small_dsn) as conn:
+        flagged = scalar(conn, "SELECT count(*) FROM bi.fact_recording WHERE NOT device_calibrated")
+        total = scalar(conn, "SELECT count(*) FROM bi.fact_recording")
+    assert (int(found.group(1)), int(found.group(2))) == (flagged, total)
+
+
+@pytest.mark.parametrize("lang", LANGS)
 def test_the_table_of_commands_is_the_list_of_commands(lang: str) -> None:
     rows = first_table(read(lang), TITLES[lang]["cli"])
     shown = []
