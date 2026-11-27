@@ -20,7 +20,7 @@ English: [README.md](README.md)
 | Tabelas no esquema `lab` | 13 |
 | Chaves estrangeiras entre elas | 13 |
 | Tipos enumerados | 6 |
-| Migrações | 12 |
+| Migrações | 13 |
 | Consultas didáticas | 12 |
 | Lições de EXPLAIN | 8 |
 | Verificações de qualidade dos dados | 12 |
@@ -40,9 +40,9 @@ Você precisa de Python 3.10 ou mais novo e de um servidor PostgreSQL 16. O jeit
 git clone https://github.com/juanbezerra1/labtrack-db.git
 cd labtrack-db
 docker compose up -d --wait        # PostgreSQL 16 em localhost:5432 (usuário, senha e banco: labtrack)
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -e .
+python3 -m venv .venv              # Windows: py -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1   (cmd.exe: .venv\Scripts\activate.bat)
+python -m pip install -e .         # Windows: py -m pip install -e .
 labtrack migrate                   # cria o esquema
 labtrack seed --scale small        # dados sintéticos, uns 10 segundos
 labtrack check                     # as verificações de qualidade dos dados
@@ -91,6 +91,9 @@ Coisas que mudam na sua máquina:
 * **Sem Docker.** Use um PostgreSQL 16 que você já tenha, com um usuário que possa criar bancos:
   `export LABTRACK_DSN=postgresql://USUARIO:SENHA@localhost:5432/labtrack` (no PowerShell:
   `$env:LABTRACK_DSN = "..."`), depois `labtrack createdb` e `labtrack migrate`. Não precisa do `psql`.
+* **O PowerShell não ativa o ambiente** ("running scripts is disabled on this system"). Rode uma vez
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` e abra uma janela nova, ou use o `cmd.exe` e
+  `.venv\Scripts\activate.bat`.
 
 ## O esquema
 
@@ -359,6 +362,23 @@ carga atual produz.
 | `fact_recording.csv` | 460 | uma gravação |
 | `fact_trial.csv` | 12.907 | uma tentativa |
 
+`fact_trial` traz as medidas principais de cada tentativa como colunas, para que um relatório não precise pivotar a
+tabela longa `trial_feature`. Cada medida pertence a uma modalidade: as tentativas das outras modalidades têm a célula
+vazia ali. Os valores de EMG e EEG são a média dos canais da gravação.
+
+| Coluna de `fact_trial` | Modalidade | Medida em `feature_def` | Unidade |
+|---|---|---|---|
+| `rms_mean_uv` | emg | `rms` | uV |
+| `mnf_hz` | emg | `mnf` | Hz |
+| `mdf_hz` | emg | `mdf` | Hz |
+| `alpha_power_uv2` | eeg | `power_alpha` | uV^2 |
+| `peak_force_n` | force | `peak_force` | N |
+| `force_cv_pct` | force | `force_cv` | % |
+
+`fact_recording.device_calibrated` é `false` para a gravação feita num dia em que nenhuma calibração aprovada do seu
+aparelho valia: a consulta 04 como uma coluna que um relatório pode filtrar. No tamanho `small` ela é `false` em 44 das
+460 gravações.
+
 ## Migrações
 
 O esquema é construído por arquivos SQL numerados em [`migrations/`](migrations/), aplicados em ordem por um executor de
@@ -380,6 +400,7 @@ $ labtrack status
   0010  applied   protocol_version_check
   0011  applied   protocol_version_validate
   0012  applied   recording_time_index
+  0013  applied   bi_more_columns
 ```
 
 Os arquivos 0008 a 0011 são um exemplo completo de como adicionar uma coluna `NOT NULL` a uma tabela em uso sem segurar
@@ -387,13 +408,15 @@ um bloqueio forte por muito tempo: adicionar a coluna, preenchê-la, criar um `C
 bloqueio mais fraco) e marcar `NOT NULL` (o PostgreSQL pula a varredura porque o `CHECK` validado já prova a regra).
 Cada passo é um arquivo, porque uma migração é uma transação e seus bloqueios duram até ela terminar. O arquivo 0012
 cria um índice com `CREATE INDEX CONCURRENTLY`, que não pode rodar dentro de uma transação, então o executor deixa um
-arquivo optar por sair dela. Não há migrações de volta (down): um banco em uso só avança.
+arquivo optar por sair dela. O arquivo 0013 acrescenta colunas a duas views com `CREATE OR REPLACE VIEW`, que pode
+anexar colunas mas nunca renomear nem mudar o tipo das que existem, então um relatório que já lê as views continua
+funcionando. Não há migrações de volta (down): um banco em uso só avança.
 O [`docs/design-notes.md`](docs/design-notes.md#migrations) tem o resto.
 
 ## Testes e CI
 
 ```bash
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"      # Windows: py -m pip install -e ".[dev]"
 export LABTRACK_TEST_DSN=postgresql://labtrack:labtrack@localhost:5432/postgres   # um usuário que possa criar bancos
 pytest
 ```
@@ -411,7 +434,7 @@ O [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda `ruff`, `mypy` (es
 
 ## Linha de comando
 
-O `labtrack` é instalado por `pip install -e .`; `python -m labtrack` faz o mesmo. O `--dsn` vai antes do nome do
+O `labtrack` é instalado por `python -m pip install -e .`; `python -m labtrack` (`py -m labtrack` no Windows) faz o mesmo. O `--dsn` vai antes do nome do
 comando; sem ele a ferramenta usa `$LABTRACK_DSN` e depois `postgresql://labtrack:labtrack@localhost:5432/labtrack` (o
 banco do Docker Compose).
 
