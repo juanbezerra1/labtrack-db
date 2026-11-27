@@ -420,8 +420,8 @@ query against a golden result, the plan shape of every lesson, the integrity of 
 the data dictionary, the command line, and this README: the diagram, the tables of sizes, devices and queries, and every
 `$ labtrack ...` block are compared with what the database and the tool really say.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `ruff`, `mypy` (strict) and `pytest` against a `postgres:16`
-service on Python 3.10 and 3.13.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `ruff` (lint and format check), `mypy` (strict) and `pytest`
+against a `postgres:16` service on Python 3.10 and 3.13.
 
 ## Command line
 

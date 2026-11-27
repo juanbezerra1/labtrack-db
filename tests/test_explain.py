@@ -60,7 +60,7 @@ def buffers(plan: ExplainResult) -> int:
 def test_lesson_01_the_index_reads_far_fewer_pages(results: dict[int, LessonResult]) -> None:
     r = results[1].explains
     assert buffers(r["after"]) * 10 < buffers(r["before"])
-    assert r["after"].root["actual_rows"] == r["before"].root["actual_rows"] > 0   # same answer, different road
+    assert r["after"].root["actual_rows"] == r["before"].root["actual_rows"] > 0  # same answer, different road
 
 
 def test_lesson_03_an_index_only_scan_never_visits_the_table(results: dict[int, LessonResult]) -> None:
@@ -70,7 +70,7 @@ def test_lesson_03_an_index_only_scan_never_visits_the_table(results: dict[int, 
 
 
 def test_lesson_04_the_partial_index_is_much_smaller(results: dict[int, LessonResult]) -> None:
-    (columns, rows), = [results[4].shows[k] for k in results[4].shows]
+    ((columns, rows),) = [results[4].shows[k] for k in results[4].shows]
     sizes = {r[0]: r[1] for r in rows}
     unit_kb = {"bytes": 1 / 1024, "kB": 1, "MB": 1024}
 
@@ -91,8 +91,8 @@ def test_lesson_06_work_mem_changes_the_sort_method(results: dict[int, LessonRes
     r = results[6].explains
     assert "external merge" in r["default memory"].first("Sort")["description"]
     assert "quicksort" in r["more memory"].first("Sort")["description"]
-    assert r["more memory"].first("Sort")["sort_space_kb"] > 4 * 1024            # it would not have fitted in the default 4 MB
-    assert r["only the top ten"].first("Sort")["sort_space_kb"] < 1024        # a heap of ten rows: kilobytes
+    assert r["more memory"].first("Sort")["sort_space_kb"] > 4 * 1024  # it would not have fitted in the default 4 MB
+    assert r["only the top ten"].first("Sort")["sort_space_kb"] < 1024  # a heap of ten rows: kilobytes
 
 
 def ratio(plan: ExplainResult) -> float:
@@ -118,5 +118,11 @@ def test_running_the_lessons_changed_nothing(medium_dsn: str, results: dict[int,
     """The lab runs in a transaction it rolls back: no stray index, statistics object or setting is left."""
     with connect(medium_dsn) as conn:
         names = {r[0] for r in conn.execute("SELECT indexname FROM pg_indexes WHERE schemaname = 'lab'")}
-        assert not {n for n in names if n.startswith(("trial_feature_feature_value", "trial_feature_covering", "trial_rejected", "trial_reason_full"))}
+        assert not {
+            n
+            for n in names
+            if n.startswith(
+                ("trial_feature_feature_value", "trial_feature_covering", "trial_rejected", "trial_reason_full")
+            )
+        }
         assert scalar(conn, "SELECT count(*) FROM pg_statistic_ext WHERE stxname = 'recording_modality_channels'") == 0

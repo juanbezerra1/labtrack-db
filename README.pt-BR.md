@@ -429,8 +429,8 @@ contra um resultado de referência, o formato do plano de cada lição, a integr
 CSV, o dicionário de dados, a linha de comando e este README: o diagrama, as tabelas de tamanhos, aparelhos e consultas e
 cada bloco `$ labtrack ...` são comparados com o que o banco e a ferramenta realmente dizem.
 
-O [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda `ruff`, `mypy` (estrito) e `pytest` contra um serviço
-`postgres:16` em Python 3.10 e 3.13.
+O [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda `ruff` (lint e verificação de formato), `mypy` (estrito) e
+`pytest` contra um serviço `postgres:16` em Python 3.10 e 3.13.
 
 ## Linha de comando
 

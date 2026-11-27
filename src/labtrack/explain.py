@@ -32,7 +32,7 @@ MIN_TRIAL_FEATURE_ROWS = {"tiny": 0, "small": 100_000, "medium": 800_000, "large
 
 @dataclass(frozen=True)
 class Step:
-    kind: str       # explain | do | show
+    kind: str  # explain | do | show
     label: str
     sql: str
 
@@ -102,21 +102,36 @@ def load_lessons(directory: Path | None = None) -> list[Lesson]:
         needs = HEADER_NEEDS.search(text)
         pieces = MARKER.split(text)
         header = pieces[0]
-        intro = "\n".join(line[3:] if line.startswith("-- ") else line[2:] for line in header.splitlines()[1:]
-                          if line.startswith("--") and not line.startswith("-- Needs:")).strip()
+        intro = "\n".join(
+            line[3:] if line.startswith("-- ") else line[2:]
+            for line in header.splitlines()[1:]
+            if line.startswith("--") and not line.startswith("-- Needs:")
+        ).strip()
         steps: list[Step] = []
         expectations: list[Expectation] = []
         for i in range(1, len(pieces), 3):
             kind, rest, body = pieces[i], pieces[i + 1].strip(), pieces[i + 2]
             if kind in ("expect", "forbid"):
                 label, _, wanted = rest.partition(":")
-                expectations.append(Expectation(label.strip(), kind == "forbid",
-                                                tuple(w.strip() for w in wanted.split("|") if w.strip())))
+                expectations.append(
+                    Expectation(
+                        label.strip(), kind == "forbid", tuple(w.strip() for w in wanted.split("|") if w.strip())
+                    )
+                )
             else:
                 sql = "\n".join(line for line in body.splitlines() if not line.startswith("-- ")).strip()
                 steps.append(Step(kind, rest or kind, sql))
-        lessons.append(Lesson(int(title.group(1)), title.group(2), needs.group(1) if needs else "tiny",
-                              intro, path, tuple(steps), tuple(expectations)))
+        lessons.append(
+            Lesson(
+                int(title.group(1)),
+                title.group(2),
+                needs.group(1) if needs else "tiny",
+                intro,
+                path,
+                tuple(steps),
+                tuple(expectations),
+            )
+        )
     return lessons
 
 
@@ -143,21 +158,23 @@ def flatten(plan: dict[str, Any], top: dict[str, Any]) -> list[dict[str, Any]]:
     nodes: list[dict[str, Any]] = []
 
     def walk(node: dict[str, Any], depth: int) -> None:
-        nodes.append({
-            "depth": depth,
-            "description": describe(node),
-            "node_type": node["Node Type"],
-            "estimated_rows": node.get("Plan Rows"),
-            "actual_rows": node.get("Actual Rows"),
-            "loops": node.get("Actual Loops"),
-            "actual_ms": node.get("Actual Total Time"),
-            "rows_removed_by_filter": node.get("Rows Removed by Filter"),
-            "heap_fetches": node.get("Heap Fetches"),
-            "sort_space_kb": node.get("Sort Space Used"),
-            "shared_hit": node.get("Shared Hit Blocks"),
-            "shared_read": node.get("Shared Read Blocks"),
-            "workers_launched": node.get("Workers Launched"),
-        })
+        nodes.append(
+            {
+                "depth": depth,
+                "description": describe(node),
+                "node_type": node["Node Type"],
+                "estimated_rows": node.get("Plan Rows"),
+                "actual_rows": node.get("Actual Rows"),
+                "loops": node.get("Actual Loops"),
+                "actual_ms": node.get("Actual Total Time"),
+                "rows_removed_by_filter": node.get("Rows Removed by Filter"),
+                "heap_fetches": node.get("Heap Fetches"),
+                "sort_space_kb": node.get("Sort Space Used"),
+                "shared_hit": node.get("Shared Hit Blocks"),
+                "shared_read": node.get("Shared Read Blocks"),
+                "workers_launched": node.get("Workers Launched"),
+            }
+        )
         for child in node.get("Plans", []):
             walk(child, depth + 1)
 
@@ -215,7 +232,8 @@ def check_expectations(result: LessonResult) -> list[str]:
             problems.append(f"{exp.label}: plan must not contain {found[0]!r}; plan is {plan.descriptions}")
         if not exp.forbid and not found:
             problems.append(
-                f"{exp.label}: plan should contain one of {list(exp.alternatives)}; plan is {plan.descriptions}")
+                f"{exp.label}: plan should contain one of {list(exp.alternatives)}; plan is {plan.descriptions}"
+            )
     return problems
 
 
@@ -245,6 +263,7 @@ def render(result: LessonResult, plans: bool = False) -> str:
         out.append("")
     for label, (columns, rows) in result.shows.items():
         from .queries import format_table
+
         out += [f"[{label}]", format_table(columns, rows), ""]
     problems = check_expectations(result)
     out.append("The plans are as the lesson says." if not problems else "NOT AS EXPECTED:\n  " + "\n  ".join(problems))

@@ -56,43 +56,76 @@ class Lab:
     # ---- slowly changing tables -------------------------------------------------------------
     def study(self, **kw: Any) -> int:
         n = self._next()
-        values = dict(code=f"TST-{n:02d}", title="A test study", started_on="2024-01-01", ended_on=None,
-                      planned_visits=4, target_n=10)
+        values = dict(
+            code=f"TST-{n:02d}",
+            title="A test study",
+            started_on="2024-01-01",
+            ended_on=None,
+            planned_visits=4,
+            target_n=10,
+        )
         return self.insert("study", "study_id", **{**values, **kw})
 
     def researcher(self, **kw: Any) -> int:
         n = self._next()
-        values = dict(full_name=f"Test Researcher {n}", role="msc", email=f"r{n}@lab.example",
-                      hired_on="2020-01-01", left_on=None)
+        values = dict(
+            full_name=f"Test Researcher {n}", role="msc", email=f"r{n}@lab.example", hired_on="2020-01-01", left_on=None
+        )
         return self.insert("researcher", "researcher_id", **{**values, **kw})
 
     def participant(self, **kw: Any) -> int:
         n = self._next()
-        values = dict(code=f"P{n:04d}", birth_year=1990, sex="F", dominant_hand="right",
-                      consent_signed_on="2024-01-02", withdrawn_on=None)
+        values = dict(
+            code=f"P{n:04d}",
+            birth_year=1990,
+            sex="F",
+            dominant_hand="right",
+            consent_signed_on="2024-01-02",
+            withdrawn_on=None,
+        )
         return self.insert("participant", "participant_id", **{**values, **kw})
 
     def enrollment(self, study_id: int, participant_id: int, **kw: Any) -> None:
-        values = dict(study_id=study_id, participant_id=participant_id, group_label="control",
-                      enrolled_on="2024-01-10")
+        values = dict(study_id=study_id, participant_id=participant_id, group_label="control", enrolled_on="2024-01-10")
         self.insert("enrollment", "study_id", **{**values, **kw})
 
     def device(self, **kw: Any) -> int:
         n = self._next()
-        values = dict(kind="emg_amplifier", model="Test Amp", serial_no=f"SN-T-{n:03d}", home_room="R01",
-                      acquired_on="2020-01-01", retired_on=None)
+        values = dict(
+            kind="emg_amplifier",
+            model="Test Amp",
+            serial_no=f"SN-T-{n:03d}",
+            home_room="R01",
+            acquired_on="2020-01-01",
+            retired_on=None,
+        )
         return self.insert("device", "device_id", **{**values, **kw})
 
     def calibration(self, device_id: int, researcher_id: int, **kw: Any) -> int:
-        values = dict(device_id=device_id, performed_on="2024-01-05", performed_by=researcher_id, passed=True,
-                      valid_until="2024-05-04", notes=None)
+        values = dict(
+            device_id=device_id,
+            performed_on="2024-01-05",
+            performed_by=researcher_id,
+            passed=True,
+            valid_until="2024-05-04",
+            notes=None,
+        )
         return self.insert("calibration", "calibration_id", **{**values, **kw})
 
     # ---- the tables that grow ---------------------------------------------------------------
     def session(self, study_id: int, participant_id: int, researcher_id: int, **kw: Any) -> int:
-        values = dict(study_id=study_id, participant_id=participant_id, researcher_id=researcher_id,
-                      visit_no=1, room="R01", starts_at=at("2024-02-05"), ends_at=at("2024-02-05", "10:30"),
-                      status="scheduled", notes=Jsonb({}), protocol_version="v2")
+        values = dict(
+            study_id=study_id,
+            participant_id=participant_id,
+            researcher_id=researcher_id,
+            visit_no=1,
+            room="R01",
+            starts_at=at("2024-02-05"),
+            ends_at=at("2024-02-05", "10:30"),
+            status="scheduled",
+            notes=Jsonb({}),
+            protocol_version="v2",
+        )
         return self.insert("session", "session_id", **{**values, **kw})
 
     def session_device(self, session_id: int, device_id: int) -> None:
@@ -100,14 +133,31 @@ class Lab:
 
     def recording(self, session_id: int, device_id: int, **kw: Any) -> int:
         n = self._next()
-        values = dict(session_id=session_id, device_id=device_id, modality="emg", block_no=1,
-                      sampling_rate_hz=2000, n_channels=4, recorded_at=at("2024-02-05", "09:05"),
-                      duration_s=60, size_bytes=1000, sha256=f"{n:064x}", storage_uri=f"s3://bucket/{n}.edf")
+        values = dict(
+            session_id=session_id,
+            device_id=device_id,
+            modality="emg",
+            block_no=1,
+            sampling_rate_hz=2000,
+            n_channels=4,
+            recorded_at=at("2024-02-05", "09:05"),
+            duration_s=60,
+            size_bytes=1000,
+            sha256=f"{n:064x}",
+            storage_uri=f"s3://bucket/{n}.edf",
+        )
         return self.insert("recording", "recording_id", **{**values, **kw})
 
     def trial(self, recording_id: int, **kw: Any) -> int:
-        values = dict(recording_id=recording_id, trial_no=1, condition="hold_20_fb", onset_s=2, duration_s=6,
-                      valid=True, reject_reason=None)
+        values = dict(
+            recording_id=recording_id,
+            trial_no=1,
+            condition="hold_20_fb",
+            onset_s=2,
+            duration_s=6,
+            valid=True,
+            reject_reason=None,
+        )
         return self.insert("trial", "trial_id", **{**values, **kw})
 
     # ---- a ready-made world -----------------------------------------------------------------
@@ -145,9 +195,9 @@ def healthy_scene(conn: psycopg.Connection) -> Scene:
     lab = Lab(conn)
     world = lab.world()
     session = lab.booked_session(world, status="completed")
-    recording = lab.recording(session, world.device)            # n_channels defaults to 4
+    recording = lab.recording(session, world.device)  # n_channels defaults to 4
     for n in range(1, 5):
         conn.execute("INSERT INTO lab.channel VALUES (%s, %s, %s, 'uV')", (recording, n, f"ch{n}"))
     trial = lab.trial(recording)
-    conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 1, 1, 10.0)", (trial,))   # feature 1 is an EMG one
+    conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 1, 1, 10.0)", (trial,))  # feature 1 is an EMG one
     return Scene(lab, world, session, recording, trial)

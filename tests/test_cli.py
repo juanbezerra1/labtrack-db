@@ -54,8 +54,9 @@ def test_migrate_says_when_there_is_nothing_to_do(capsys: pytest.CaptureFixture[
     assert code == 0 and "nothing to apply" in out
 
 
-def test_migrate_to_a_version_leaves_the_rest_pending(capsys: pytest.CaptureFixture[str],
-                                                      make_db: Callable[[], str]) -> None:
+def test_migrate_to_a_version_leaves_the_rest_pending(
+    capsys: pytest.CaptureFixture[str], make_db: Callable[[], str]
+) -> None:
     dsn = make_db()
     code, out, _ = run(capsys, "--dsn", dsn, "migrate", "--to", "2")
     assert code == 0 and "2 migration(s) applied" in out
@@ -64,8 +65,9 @@ def test_migrate_to_a_version_leaves_the_rest_pending(capsys: pytest.CaptureFixt
     assert code == 0 and states == ["applied"] * 2 + ["pending"] * (len(load_migrations()) - 2)
 
 
-def test_status_exits_with_1_when_an_applied_file_was_changed(capsys: pytest.CaptureFixture[str],
-                                                              make_db: Callable[[], str]) -> None:
+def test_status_exits_with_1_when_an_applied_file_was_changed(
+    capsys: pytest.CaptureFixture[str], make_db: Callable[[], str]
+) -> None:
     dsn = make_db()
     with connect(dsn) as conn:
         migrate(conn, log=lambda _: None)
@@ -97,13 +99,14 @@ def test_check_passes_on_clean_data(capsys: pytest.CaptureFixture[str], small_ds
     assert code == 0 and f"{len(CHECKS)} of {len(CHECKS)} checks passed" in out
 
 
-def test_check_exits_with_1_and_names_the_failing_check(capsys: pytest.CaptureFixture[str],
-                                                        make_db: Callable[[], str]) -> None:
+def test_check_exits_with_1_and_names_the_failing_check(
+    capsys: pytest.CaptureFixture[str], make_db: Callable[[], str]
+) -> None:
     dsn = make_db()
     with connect(dsn) as conn:
         migrate(conn, log=lambda _: None)
         scene = healthy_scene(conn)
-        conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 1, 11, 5.0)", (scene.trial,))   # an EEG feature on EMG
+        conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 1, 11, 5.0)", (scene.trial,))  # an EEG feature on EMG
     code, out, _ = run(capsys, "--dsn", dsn, "check")
     assert code == 1
     assert "FAIL feature_of_wrong_modality" in out and f"{len(CHECKS) - 1} of {len(CHECKS)} checks passed" in out
@@ -111,7 +114,7 @@ def test_check_exits_with_1_and_names_the_failing_check(capsys: pytest.CaptureFi
 
 # ---- queries and lessons ----------------------------------------------------------------------
 def test_query_without_a_number_lists_them_all(capsys: pytest.CaptureFixture[str]) -> None:
-    code, out, _ = run(capsys, "query")      # listing needs no database
+    code, out, _ = run(capsys, "query")  # listing needs no database
     assert code == 0
     for query in load_queries():
         assert query.title in out
@@ -149,15 +152,17 @@ def test_explain_lab_unknown_lesson(capsys: pytest.CaptureFixture[str], tiny_dsn
 
 
 # ---- exports and documentation ----------------------------------------------------------------
-def test_export_writes_every_view_and_the_checksums(capsys: pytest.CaptureFixture[str], small_dsn: str,
-                                                    tmp_path: Path) -> None:
+def test_export_writes_every_view_and_the_checksums(
+    capsys: pytest.CaptureFixture[str], small_dsn: str, tmp_path: Path
+) -> None:
     code, out, _ = run(capsys, "--dsn", small_dsn, "export", "--out", str(tmp_path))
     assert code == 0 and "SHA256SUMS" in out
     assert {p.name for p in tmp_path.iterdir()} == {f"{view}.csv" for view in EXPORT_VIEWS} | {"SHA256SUMS"}
 
 
-def test_dictionary_prints_or_writes_the_same_text(capsys: pytest.CaptureFixture[str], migrated_dsn: str,
-                                                   tmp_path: Path) -> None:
+def test_dictionary_prints_or_writes_the_same_text(
+    capsys: pytest.CaptureFixture[str], migrated_dsn: str, tmp_path: Path
+) -> None:
     code, printed, _ = run(capsys, "--dsn", migrated_dsn, "dictionary")
     assert code == 0 and printed.startswith("# Data dictionary")
     target = tmp_path / "dictionary.md"
@@ -181,7 +186,8 @@ def test_createdb_creates_the_database_once(capsys: pytest.CaptureFixture[str], 
 
 
 def test_an_unreachable_server_is_a_readable_error_that_does_not_print_the_password(
-        capsys: pytest.CaptureFixture[str]) -> None:
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     code, out, err = run(capsys, "--dsn", "postgresql://someone:s3cret-word@127.0.0.1:1/nothing", "status")
     assert code == 1 and out == ""
     assert "could not connect" in err and "README" in err

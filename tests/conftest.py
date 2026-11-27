@@ -25,7 +25,9 @@ ADMIN_DSN = os.environ.get("LABTRACK_TEST_DSN", "")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    parser.addoption("--update-golden", action="store_true", help="rewrite tests/golden/*.json from the current results")
+    parser.addoption(
+        "--update-golden", action="store_true", help="rewrite tests/golden/*.json from the current results"
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

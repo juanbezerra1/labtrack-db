@@ -17,8 +17,14 @@ from typing import Any
 import psycopg
 
 EXPORT_VIEWS = [
-    "dim_date", "dim_study", "dim_participant", "dim_researcher", "dim_device",
-    "fact_session", "fact_recording", "fact_trial",
+    "dim_date",
+    "dim_study",
+    "dim_participant",
+    "dim_researcher",
+    "dim_device",
+    "fact_session",
+    "fact_recording",
+    "fact_trial",
 ]
 
 

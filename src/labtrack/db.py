@@ -12,7 +12,7 @@ from psycopg import conninfo, sql
 
 DEFAULT_DSN = "postgresql://labtrack:labtrack@localhost:5432/labtrack"
 
-Query = str | bytes | sql.SQL | sql.Composed          # what Connection.execute() accepts
+Query = str | bytes | sql.SQL | sql.Composed  # what Connection.execute() accepts
 
 
 def get_dsn(dsn: str | None = None) -> str:

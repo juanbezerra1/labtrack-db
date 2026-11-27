@@ -41,8 +41,17 @@ def test_no_fact_row_points_at_a_missing_dimension_row(small_dsn: str, name: str
         assert scalar(conn, sql) == 0, name
 
 
-@pytest.mark.parametrize("view, key", [("fact_session", "session_key"), ("fact_recording", "recording_key"), ("fact_trial", "trial_key"),
-                                        ("dim_study", "study_key"), ("dim_participant", "participant_key"), ("dim_date", "date_key")])
+@pytest.mark.parametrize(
+    "view, key",
+    [
+        ("fact_session", "session_key"),
+        ("fact_recording", "recording_key"),
+        ("fact_trial", "trial_key"),
+        ("dim_study", "study_key"),
+        ("dim_participant", "participant_key"),
+        ("dim_date", "date_key"),
+    ],
+)
 def test_the_grain_one_row_per_key(small_dsn: str, view: str, key: str) -> None:
     with connect(small_dsn) as conn:
         rows, distinct = row(conn, f"SELECT count(*), count(DISTINCT {key}) FROM bi.{view}")
@@ -70,29 +79,41 @@ def test_the_facts_add_up_to_the_source_tables(small_dsn: str) -> None:
 
 # ---- the feature columns and the calibration flag (migration 0013) ------------------------------
 FEATURE_COLUMNS = {
-    "rms_mean_uv": "emg", "mnf_hz": "emg", "mdf_hz": "emg",
+    "rms_mean_uv": "emg",
+    "mnf_hz": "emg",
+    "mdf_hz": "emg",
     "alpha_power_uv2": "eeg",
-    "peak_force_n": "force", "force_cv_pct": "force",
+    "peak_force_n": "force",
+    "force_cv_pct": "force",
 }
 
 
 @pytest.mark.parametrize("column, modality", FEATURE_COLUMNS.items(), ids=list(FEATURE_COLUMNS))
 def test_a_feature_column_is_filled_for_its_own_modality_and_empty_for_the_others(
-        small_dsn: str, column: str, modality: str) -> None:
+    small_dsn: str, column: str, modality: str
+) -> None:
     with connect(small_dsn) as conn:
-        own, own_filled, elsewhere_filled = row(conn, f"""
+        own, own_filled, elsewhere_filled = row(
+            conn,
+            f"""
             SELECT count(*) FILTER (WHERE modality = %s),
                    count({column}) FILTER (WHERE modality = %s),
                    count({column}) FILTER (WHERE modality <> %s)
-            FROM bi.fact_trial""", (modality, modality, modality))
+            FROM bi.fact_trial""",
+            (modality, modality, modality),
+        )
     assert own > 0
     assert own_filled == own, f"{column} should be filled for every {modality} trial"
     assert elsewhere_filled == 0, f"{column} should be empty for the other modalities"
 
 
-FEATURE_NAMES = {            # column -> (feature in lab.feature_def, how a trial's channels are combined)
-    "rms_mean_uv": ("rms", "avg"), "mnf_hz": ("mnf", "avg"), "mdf_hz": ("mdf", "avg"),
-    "alpha_power_uv2": ("power_alpha", "avg"), "peak_force_n": ("peak_force", "max"), "force_cv_pct": ("force_cv", "avg"),
+FEATURE_NAMES = {  # column -> (feature in lab.feature_def, how a trial's channels are combined)
+    "rms_mean_uv": ("rms", "avg"),
+    "mnf_hz": ("mnf", "avg"),
+    "mdf_hz": ("mdf", "avg"),
+    "alpha_power_uv2": ("power_alpha", "avg"),
+    "peak_force_n": ("peak_force", "max"),
+    "force_cv_pct": ("force_cv", "avg"),
 }
 
 
@@ -103,13 +124,17 @@ def test_each_feature_column_holds_the_feature_it_is_named_after(small_dsn: str,
     feature, how = FEATURE_NAMES[column]
     with connect(small_dsn) as conn:
         filled = scalar(conn, f"SELECT count({column}) FROM bi.fact_trial")
-        wrong = scalar(conn, f"""
+        wrong = scalar(
+            conn,
+            f"""
             SELECT count(*)
             FROM bi.fact_trial AS t
             JOIN (SELECT tf.trial_id, {how}(tf.value) AS v
                   FROM lab.trial_feature AS tf JOIN lab.feature_def AS f USING (feature_id)
                   WHERE f.name = %s GROUP BY tf.trial_id) AS x ON x.trial_id = t.trial_key
-            WHERE t.{column} IS DISTINCT FROM round(x.v::numeric, 3)""", (feature,))
+            WHERE t.{column} IS DISTINCT FROM round(x.v::numeric, 3)""",
+            (feature,),
+        )
     assert filled > 0 and wrong == 0
 
 
@@ -119,7 +144,9 @@ def test_force_variability_in_the_star_is_the_number_query_10_computes(small_dsn
     query = next(q for q in load_queries() if q.number == 10)
     with connect(small_dsn) as conn:
         _, expected = run_query(conn, query.variants[0][1])
-        _, from_star = run_query(conn, """
+        _, from_star = run_query(
+            conn,
+            """
             SELECT s.group_label,
                    count(t.force_cv_pct),
                    avg(t.force_cv_pct) FILTER (WHERE right(t.condition, 3) = '_fb'),
@@ -128,12 +155,13 @@ def test_force_variability_in_the_star_is_the_number_query_10_computes(small_dsn
             JOIN bi.fact_session AS s USING (session_key)
             JOIN bi.dim_study AS st USING (study_key)
             WHERE st.study_code = 'FFB-01' AND t.valid AND t.force_cv_pct IS NOT NULL
-            GROUP BY s.group_label ORDER BY s.group_label""")
+            GROUP BY s.group_label ORDER BY s.group_label""",
+        )
     assert [r[0] for r in from_star] == [r[0] for r in expected] and len(expected) == 2
     for star_row, query_row in zip(from_star, expected, strict=True):
-        assert star_row[1] == query_row[1]                                          # the same number of values
-        assert abs(star_row[2] - query_row[2]) <= Decimal("0.001")                  # feedback on
-        assert abs(star_row[3] - query_row[3]) <= Decimal("0.001")                  # feedback off
+        assert star_row[1] == query_row[1]  # the same number of values
+        assert abs(star_row[2] - query_row[2]) <= Decimal("0.001")  # feedback on
+        assert abs(star_row[3] - query_row[3]) <= Decimal("0.001")  # feedback off
 
 
 @pytest.mark.parametrize("dsn_fixture", ["small_dsn", "medium_dsn"])
@@ -141,10 +169,12 @@ def test_the_calibration_flag_flags_what_query_4_finds(dsn_fixture: str, request
     query = next(q for q in load_queries() if q.number == 4)
     with connect(request.getfixturevalue(dsn_fixture)) as conn:
         _, found = run_query(conn, query.variants[0][1])
-        flagged: dict[str, int] = dict(conn.execute("""
+        flagged: dict[str, int] = dict(
+            conn.execute("""
             SELECT d.serial_no, count(*)
             FROM bi.fact_recording AS f JOIN bi.dim_device AS d USING (device_key)
-            WHERE NOT f.device_calibrated GROUP BY d.serial_no""").fetchall())
+            WHERE NOT f.device_calibrated GROUP BY d.serial_no""").fetchall()
+        )
     assert flagged == {r[0]: r[2] for r in found}
     assert sum(flagged.values()) > 0
 
@@ -158,15 +188,17 @@ def test_the_calibration_flag_follows_the_rule_day_by_day(conn: psycopg.Connecti
     lab.calibration(world.device, world.researcher, performed_on="2024-03-01", valid_until="2024-03-20", passed=False)
     session = lab.booked_session(world, status="completed")
     cases = [
-        (("2024-02-04", "23:59"), False),    # the day before the calibration
-        (("2024-02-05", "00:00"), True),     # performed_on itself is covered
-        (("2024-02-09", "22:30"), True),     # already the 10th in UTC, still the 9th in the lab
-        (("2024-02-10", "00:00"), False),    # valid_until is the first day NOT covered
-        (("2024-03-05", "09:00"), False),    # that calibration failed
+        (("2024-02-04", "23:59"), False),  # the day before the calibration
+        (("2024-02-05", "00:00"), True),  # performed_on itself is covered
+        (("2024-02-09", "22:30"), True),  # already the 10th in UTC, still the 9th in the lab
+        (("2024-02-10", "00:00"), False),  # valid_until is the first day NOT covered
+        (("2024-03-05", "09:00"), False),  # that calibration failed
     ]
     for block_no, ((day, hm), _) in enumerate(cases, start=1):
         lab.recording(session, world.device, block_no=block_no, recorded_at=at(day, hm))
-    flags = [r[0] for r in conn.execute("SELECT device_calibrated FROM bi.fact_recording ORDER BY recording_key").fetchall()]
+    flags = [
+        r[0] for r in conn.execute("SELECT device_calibrated FROM bi.fact_recording ORDER BY recording_key").fetchall()
+    ]
     assert flags == [expected for _, expected in cases]
 
 
@@ -189,7 +221,9 @@ def test_the_export_spells_booleans_and_nulls_plainly(small_dsn: str, tmp_path: 
     with (tmp_path / "fact_trial.csv").open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
     assert {r["valid"] for r in rows} == {"true", "false"}
-    assert any(r["reject_reason"] == "" for r in rows) and any(r["rms_mean_uv"] == "" for r in rows)   # NULL is an empty cell
+    assert any(r["reject_reason"] == "" for r in rows) and any(
+        r["rms_mean_uv"] == "" for r in rows
+    )  # NULL is an empty cell
     assert b"\r" not in (tmp_path / "fact_trial.csv").read_bytes()
 
 
@@ -200,10 +234,14 @@ def test_the_committed_export_is_what_the_small_seed_produces(small_dsn: str, tm
         export_csv(conn, tmp_path)
     committed = ROOT / "exports" / "small"
     assert (committed / "SHA256SUMS").exists(), "exports/small/ is missing"
-    assert (tmp_path / "SHA256SUMS").read_text(encoding="utf-8") == (committed / "SHA256SUMS").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert (tmp_path / "SHA256SUMS").read_text(encoding="utf-8") == (committed / "SHA256SUMS").read_text(
+        encoding="utf-8"
+    ).replace("\r\n", "\n")
     for view in EXPORT_VIEWS:
-        assert hashlib.sha256((tmp_path / f"{view}.csv").read_bytes()).hexdigest() == \
-               hashlib.sha256((committed / f"{view}.csv").read_bytes().replace(b"\r\n", b"\n")).hexdigest(), view
+        assert (
+            hashlib.sha256((tmp_path / f"{view}.csv").read_bytes()).hexdigest()
+            == hashlib.sha256((committed / f"{view}.csv").read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+        ), view
 
 
 # ---- the documentation generated from the catalog -----------------------------------------------

@@ -34,116 +34,255 @@ BAD_ROWS: list[Case] = [
     ("study code lower case", lambda lab, w: lab.study(code="abc-01"), errors.CheckViolation, "study_code_format"),
     ("study code without digits", lambda lab, w: lab.study(code="FFB"), errors.CheckViolation, "study_code_format"),
     ("study title too short", lambda lab, w: lab.study(title="abc"), errors.CheckViolation, "study_title_length"),
-    ("study ends before it starts", lambda lab, w: lab.study(started_on="2024-05-01", ended_on="2024-04-01"),
-     errors.CheckViolation, "study_dates_ordered"),
+    (
+        "study ends before it starts",
+        lambda lab, w: lab.study(started_on="2024-05-01", ended_on="2024-04-01"),
+        errors.CheckViolation,
+        "study_dates_ordered",
+    ),
     ("study with zero visits", lambda lab, w: lab.study(planned_visits=0), errors.CheckViolation, "study_visits_range"),
     ("study with 21 visits", lambda lab, w: lab.study(planned_visits=21), errors.CheckViolation, "study_visits_range"),
     ("study target of zero", lambda lab, w: lab.study(target_n=0), errors.CheckViolation, "study_target_positive"),
-    ("study code taken", lambda lab, w: lab.study(code=scalar(lab.conn, "SELECT code FROM lab.study")),
-     errors.UniqueViolation, "study_code_key"),
+    (
+        "study code taken",
+        lambda lab, w: lab.study(code=scalar(lab.conn, "SELECT code FROM lab.study")),
+        errors.UniqueViolation,
+        "study_code_key",
+    ),
     # ---- researcher ----
-    ("researcher with a blank name", lambda lab, w: lab.researcher(full_name="  a "), errors.CheckViolation,
-     "researcher_name_length"),
-    ("researcher e-mail without @", lambda lab, w: lab.researcher(email="nobody.lab.example"),
-     errors.CheckViolation, "researcher_email_shape"),
-    ("researcher leaves the day they arrive", lambda lab, w: lab.researcher(hired_on="2024-01-01", left_on="2024-01-01"),
-     errors.CheckViolation, "researcher_dates_ordered"),
-    ("researcher e-mail taken", lambda lab, w: lab.researcher(
-        email=scalar(lab.conn, "SELECT email FROM lab.researcher")),
-     errors.UniqueViolation, "researcher_email_key"),
-    ("researcher role not in the enum", lambda lab, w: lab.researcher(role="janitor"),
-     errors.InvalidTextRepresentation, None),
+    (
+        "researcher with a blank name",
+        lambda lab, w: lab.researcher(full_name="  a "),
+        errors.CheckViolation,
+        "researcher_name_length",
+    ),
+    (
+        "researcher e-mail without @",
+        lambda lab, w: lab.researcher(email="nobody.lab.example"),
+        errors.CheckViolation,
+        "researcher_email_shape",
+    ),
+    (
+        "researcher leaves the day they arrive",
+        lambda lab, w: lab.researcher(hired_on="2024-01-01", left_on="2024-01-01"),
+        errors.CheckViolation,
+        "researcher_dates_ordered",
+    ),
+    (
+        "researcher e-mail taken",
+        lambda lab, w: lab.researcher(email=scalar(lab.conn, "SELECT email FROM lab.researcher")),
+        errors.UniqueViolation,
+        "researcher_email_key",
+    ),
+    (
+        "researcher role not in the enum",
+        lambda lab, w: lab.researcher(role="janitor"),
+        errors.InvalidTextRepresentation,
+        None,
+    ),
     # ---- participant ----
-    ("participant code without the P", lambda lab, w: lab.participant(code="X0001"), errors.CheckViolation,
-     "participant_code_format"),
-    ("participant born in 1900", lambda lab, w: lab.participant(birth_year=1900), errors.CheckViolation,
-     "participant_birth_range"),
-    ("participant sex other than F or M", lambda lab, w: lab.participant(sex="X"), errors.CheckViolation,
-     "participant_sex_values"),
-    ("participant withdraws before consenting",
-     lambda lab, w: lab.participant(consent_signed_on="2024-03-01", withdrawn_on="2024-02-01"),
-     errors.CheckViolation, "participant_withdrawal_ordered"),
-    ("participant code taken", lambda lab, w: lab.participant(
-        code=scalar(lab.conn, "SELECT code FROM lab.participant")),
-     errors.UniqueViolation, "participant_code_key"),
+    (
+        "participant code without the P",
+        lambda lab, w: lab.participant(code="X0001"),
+        errors.CheckViolation,
+        "participant_code_format",
+    ),
+    (
+        "participant born in 1900",
+        lambda lab, w: lab.participant(birth_year=1900),
+        errors.CheckViolation,
+        "participant_birth_range",
+    ),
+    (
+        "participant sex other than F or M",
+        lambda lab, w: lab.participant(sex="X"),
+        errors.CheckViolation,
+        "participant_sex_values",
+    ),
+    (
+        "participant withdraws before consenting",
+        lambda lab, w: lab.participant(consent_signed_on="2024-03-01", withdrawn_on="2024-02-01"),
+        errors.CheckViolation,
+        "participant_withdrawal_ordered",
+    ),
+    (
+        "participant code taken",
+        lambda lab, w: lab.participant(code=scalar(lab.conn, "SELECT code FROM lab.participant")),
+        errors.UniqueViolation,
+        "participant_code_key",
+    ),
     # ---- enrollment ----
-    ("enrollment in an unknown group", lambda lab, w: lab.enrollment(w.study, lab.participant(), group_label="placebo"),
-     errors.CheckViolation, "enrollment_group_values"),
-    ("enrollment of a participant who does not exist", lambda lab, w: lab.enrollment(w.study, 999_999),
-     errors.ForeignKeyViolation, "enrollment_participant_id_fkey"),
-    ("the same enrollment twice", lambda lab, w: lab.enrollment(w.study, w.participant),
-     errors.UniqueViolation, "enrollment_pkey"),
+    (
+        "enrollment in an unknown group",
+        lambda lab, w: lab.enrollment(w.study, lab.participant(), group_label="placebo"),
+        errors.CheckViolation,
+        "enrollment_group_values",
+    ),
+    (
+        "enrollment of a participant who does not exist",
+        lambda lab, w: lab.enrollment(w.study, 999_999),
+        errors.ForeignKeyViolation,
+        "enrollment_participant_id_fkey",
+    ),
+    (
+        "the same enrollment twice",
+        lambda lab, w: lab.enrollment(w.study, w.participant),
+        errors.UniqueViolation,
+        "enrollment_pkey",
+    ),
     # ---- device and calibration ----
-    ("device room not like R01", lambda lab, w: lab.device(home_room="room 1"), errors.CheckViolation,
-     "device_room_format"),
-    ("device retired before it was acquired", lambda lab, w: lab.device(acquired_on="2024-01-01", retired_on="2023-01-01"),
-     errors.CheckViolation, "device_dates_ordered"),
-    ("device serial number taken", lambda lab, w: lab.device(
-        serial_no=scalar(lab.conn, "SELECT serial_no FROM lab.device")),
-     errors.UniqueViolation, "device_serial_no_key"),
-    ("calibration that expires before it happens",
-     lambda lab, w: lab.calibration(w.device, w.researcher, performed_on="2024-03-01", valid_until="2024-03-01"),
-     errors.CheckViolation, "calibration_dates_ordered"),
-    ("two calibrations of one device on one day",
-     lambda lab, w: (lab.calibration(w.device, w.researcher), lab.calibration(w.device, w.researcher)),
-     errors.UniqueViolation, "calibration_device_id_performed_on_key"),
+    (
+        "device room not like R01",
+        lambda lab, w: lab.device(home_room="room 1"),
+        errors.CheckViolation,
+        "device_room_format",
+    ),
+    (
+        "device retired before it was acquired",
+        lambda lab, w: lab.device(acquired_on="2024-01-01", retired_on="2023-01-01"),
+        errors.CheckViolation,
+        "device_dates_ordered",
+    ),
+    (
+        "device serial number taken",
+        lambda lab, w: lab.device(serial_no=scalar(lab.conn, "SELECT serial_no FROM lab.device")),
+        errors.UniqueViolation,
+        "device_serial_no_key",
+    ),
+    (
+        "calibration that expires before it happens",
+        lambda lab, w: lab.calibration(w.device, w.researcher, performed_on="2024-03-01", valid_until="2024-03-01"),
+        errors.CheckViolation,
+        "calibration_dates_ordered",
+    ),
+    (
+        "two calibrations of one device on one day",
+        lambda lab, w: (lab.calibration(w.device, w.researcher), lab.calibration(w.device, w.researcher)),
+        errors.UniqueViolation,
+        "calibration_device_id_performed_on_key",
+    ),
     # ---- session ----
-    ("session for a participant who is not enrolled in the study",
-     lambda lab, w: lab.session(w.study, lab.participant(), w.researcher),
-     errors.ForeignKeyViolation, "session_enrollment_fk"),
-    ("the same visit number twice",
-     lambda lab, w: (lab.session(w.study, w.participant, w.researcher),
-                     lab.session(w.study, w.participant, w.researcher, starts_at=at("2024-02-06"), ends_at=at("2024-02-06", "10:00"))),
-     errors.UniqueViolation, "session_visit_unique"),
-    ("visit number zero", lambda lab, w: lab.session(w.study, w.participant, w.researcher, visit_no=0),
-     errors.CheckViolation, "session_visit_range"),
-    ("room not like R01", lambda lab, w: lab.session(w.study, w.participant, w.researcher, room="lab 1"),
-     errors.CheckViolation, "session_room_format"),
-    ("session of zero length",
-     lambda lab, w: lab.session(w.study, w.participant, w.researcher, ends_at=at("2024-02-05")),
-     errors.CheckViolation, "session_times_ordered"),
-    ("session longer than six hours",
-     lambda lab, w: lab.session(w.study, w.participant, w.researcher, ends_at=at("2024-02-05", "15:30")),
-     errors.CheckViolation, "session_max_length"),
-    ("notes that are not a JSON object",
-     lambda lab, w: lab.session(w.study, w.participant, w.researcher, notes=Jsonb([1, 2])),
-     errors.CheckViolation, "session_notes_object"),
-    ("protocol version in the wrong format",
-     lambda lab, w: lab.session(w.study, w.participant, w.researcher, protocol_version="two"),
-     errors.CheckViolation, "session_protocol_format"),
-    ("session without a protocol version",
-     lambda lab, w: lab.session(w.study, w.participant, w.researcher, protocol_version=None),
-     errors.NotNullViolation, None),
+    (
+        "session for a participant who is not enrolled in the study",
+        lambda lab, w: lab.session(w.study, lab.participant(), w.researcher),
+        errors.ForeignKeyViolation,
+        "session_enrollment_fk",
+    ),
+    (
+        "the same visit number twice",
+        lambda lab, w: (
+            lab.session(w.study, w.participant, w.researcher),
+            lab.session(
+                w.study, w.participant, w.researcher, starts_at=at("2024-02-06"), ends_at=at("2024-02-06", "10:00")
+            ),
+        ),
+        errors.UniqueViolation,
+        "session_visit_unique",
+    ),
+    (
+        "visit number zero",
+        lambda lab, w: lab.session(w.study, w.participant, w.researcher, visit_no=0),
+        errors.CheckViolation,
+        "session_visit_range",
+    ),
+    (
+        "room not like R01",
+        lambda lab, w: lab.session(w.study, w.participant, w.researcher, room="lab 1"),
+        errors.CheckViolation,
+        "session_room_format",
+    ),
+    (
+        "session of zero length",
+        lambda lab, w: lab.session(w.study, w.participant, w.researcher, ends_at=at("2024-02-05")),
+        errors.CheckViolation,
+        "session_times_ordered",
+    ),
+    (
+        "session longer than six hours",
+        lambda lab, w: lab.session(w.study, w.participant, w.researcher, ends_at=at("2024-02-05", "15:30")),
+        errors.CheckViolation,
+        "session_max_length",
+    ),
+    (
+        "notes that are not a JSON object",
+        lambda lab, w: lab.session(w.study, w.participant, w.researcher, notes=Jsonb([1, 2])),
+        errors.CheckViolation,
+        "session_notes_object",
+    ),
+    (
+        "protocol version in the wrong format",
+        lambda lab, w: lab.session(w.study, w.participant, w.researcher, protocol_version="two"),
+        errors.CheckViolation,
+        "session_protocol_format",
+    ),
+    (
+        "session without a protocol version",
+        lambda lab, w: lab.session(w.study, w.participant, w.researcher, protocol_version=None),
+        errors.NotNullViolation,
+        None,
+    ),
     # ---- recording ----
-    ("recording with a device that was not booked for the session",
-     lambda lab, w: lab.recording(lab.session(w.study, w.participant, w.researcher), lab.device()),
-     errors.ForeignKeyViolation, "recording_session_device_fk"),
-    ("the same block recorded twice", lambda lab, w: (lambda s: (lab.recording(s, w.device), lab.recording(s, w.device)))(lab.booked_session(w)),
-     errors.UniqueViolation, "recording_block_unique"),
+    (
+        "recording with a device that was not booked for the session",
+        lambda lab, w: lab.recording(lab.session(w.study, w.participant, w.researcher), lab.device()),
+        errors.ForeignKeyViolation,
+        "recording_session_device_fk",
+    ),
+    (
+        "the same block recorded twice",
+        lambda lab, w: (lambda s: (lab.recording(s, w.device), lab.recording(s, w.device)))(lab.booked_session(w)),
+        errors.UniqueViolation,
+        "recording_block_unique",
+    ),
     ("sampling rate of zero", _recording(sampling_rate_hz=0), errors.CheckViolation, "recording_rate_range"),
     ("no channels", _recording(n_channels=0), errors.CheckViolation, "recording_channels_range"),
     ("recording of zero seconds", _recording(duration_s=0), errors.CheckViolation, "recording_duration_positive"),
     ("negative file size", _recording(size_bytes=-1), errors.CheckViolation, "recording_size_nonnegative"),
     ("hash that is not hex", _recording(sha256="z" * 64), errors.CheckViolation, "recording_sha256_format"),
-    ("file location that is not s3:// or file://", _recording(storage_uri="http://example.org/x.edf"),
-     errors.CheckViolation, "recording_uri_scheme"),
-    ("the same file registered twice",
-     lambda lab, w: (lambda s: (lab.recording(s, w.device, sha256="a" * 64), lab.recording(s, w.device, block_no=2, sha256="a" * 64)))(lab.booked_session(w)),
-     errors.UniqueViolation, "recording_sha256_key"),
+    (
+        "file location that is not s3:// or file://",
+        _recording(storage_uri="http://example.org/x.edf"),
+        errors.CheckViolation,
+        "recording_uri_scheme",
+    ),
+    (
+        "the same file registered twice",
+        lambda lab, w: (
+            lambda s: (
+                lab.recording(s, w.device, sha256="a" * 64),
+                lab.recording(s, w.device, block_no=2, sha256="a" * 64),
+            )
+        )(lab.booked_session(w)),
+        errors.UniqueViolation,
+        "recording_sha256_key",
+    ),
     # ---- trial ----
     ("trial number zero", _trial(trial_no=0), errors.CheckViolation, "trial_number_positive"),
     ("trial that starts before the recording", _trial(onset_s=-1), errors.CheckViolation, "trial_onset_nonnegative"),
     ("trial of zero seconds", _trial(duration_s=0), errors.CheckViolation, "trial_duration_positive"),
-    ("rejected trial without a reason", _trial(valid=False, reject_reason=None), errors.CheckViolation,
-     "trial_reason_iff_rejected"),
-    ("valid trial with a rejection reason", _trial(valid=True, reject_reason="movement_artifact"),
-     errors.CheckViolation, "trial_reason_iff_rejected"),
+    (
+        "rejected trial without a reason",
+        _trial(valid=False, reject_reason=None),
+        errors.CheckViolation,
+        "trial_reason_iff_rejected",
+    ),
+    (
+        "valid trial with a rejection reason",
+        _trial(valid=True, reject_reason="movement_artifact"),
+        errors.CheckViolation,
+        "trial_reason_iff_rejected",
+    ),
 ]
 
 
 @pytest.mark.parametrize("label, build, exc_type, constraint", BAD_ROWS, ids=[c[0] for c in BAD_ROWS])
-def test_bad_row_is_refused(conn: psycopg.Connection, label: str, build: Callable[[Lab, World], Any],
-                            exc_type: type[Exception], constraint: str | None) -> None:
+def test_bad_row_is_refused(
+    conn: psycopg.Connection,
+    label: str,
+    build: Callable[[Lab, World], Any],
+    exc_type: type[Exception],
+    constraint: str | None,
+) -> None:
     lab = Lab(conn)
     world = lab.world()
     with violates(conn, exc_type, constraint):
@@ -155,14 +294,26 @@ def test_every_named_constraint_is_exercised(conn: psycopg.Connection) -> None:
     exercised = {c[3] for c in BAD_ROWS if c[3]}
     # these need a story and are tested below, or protect the long table and are tested in the next block
     tested_elsewhere = {
-        "session_room_no_overlap", "session_before_consent", "session_after_withdrawal", "session_before_enrollment",
-        "session_outside_study", "trial_number_unique", "channel_no_positive", "channel_unit_values",
-        "trial_feature_channel_positive", "trial_feature_finite", "recording_session_device_fk",
+        "session_room_no_overlap",
+        "session_before_consent",
+        "session_after_withdrawal",
+        "session_before_enrollment",
+        "session_outside_study",
+        "trial_number_unique",
+        "channel_no_positive",
+        "channel_unit_values",
+        "trial_feature_channel_positive",
+        "trial_feature_finite",
+        "recording_session_device_fk",
         "feature_def_modality_name_key",
     }
-    declared = {r[0] for r in conn.execute(
-        """SELECT conname FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
-           WHERE n.nspname = 'lab' AND c.contype IN ('c', 'u', 'x') AND c.conname NOT LIKE '%_pkey'""")}
+    declared = {
+        r[0]
+        for r in conn.execute(
+            """SELECT conname FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
+           WHERE n.nspname = 'lab' AND c.contype IN ('c', 'u', 'x') AND c.conname NOT LIKE '%_pkey'"""
+        )
+    }
     missing = sorted(declared - exercised - tested_elsewhere)
     assert not missing, f"constraints with no test: {missing}"
 
@@ -175,9 +326,13 @@ def test_two_sessions_cannot_share_a_room_at_the_same_time(conn: psycopg.Connect
     w = lab.world()
     other = lab.participant()
     lab.enrollment(w.study, other)
-    lab.session(w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "09:00"), ends_at=at("2024-02-05", "10:30"))
+    lab.session(
+        w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "09:00"), ends_at=at("2024-02-05", "10:30")
+    )
     with violates(conn, errors.ExclusionViolation, "session_room_no_overlap"):
-        lab.session(w.study, other, w.researcher, starts_at=at("2024-02-05", "10:00"), ends_at=at("2024-02-05", "11:00"))
+        lab.session(
+            w.study, other, w.researcher, starts_at=at("2024-02-05", "10:00"), ends_at=at("2024-02-05", "11:00")
+        )
 
 
 def test_back_to_back_sessions_in_one_room_are_fine(conn: psycopg.Connection) -> None:
@@ -186,7 +341,9 @@ def test_back_to_back_sessions_in_one_room_are_fine(conn: psycopg.Connection) ->
     w = lab.world()
     other = lab.participant()
     lab.enrollment(w.study, other)
-    lab.session(w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "09:00"), ends_at=at("2024-02-05", "10:00"))
+    lab.session(
+        w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "09:00"), ends_at=at("2024-02-05", "10:00")
+    )
     lab.session(w.study, other, w.researcher, starts_at=at("2024-02-05", "10:00"), ends_at=at("2024-02-05", "11:00"))
 
 
@@ -225,7 +382,9 @@ def test_session_times_must_be_in_order_even_when_reversed(conn: psycopg.Connect
     lab = Lab(conn)
     w = lab.world()
     with violates(conn, (errors.CheckViolation, errors.DataException)):  # type: ignore[arg-type]
-        lab.session(w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "10:00"), ends_at=at("2024-02-05", "09:00"))
+        lab.session(
+            w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "10:00"), ends_at=at("2024-02-05", "09:00")
+        )
 
 
 @pytest.mark.parametrize(
@@ -270,9 +429,12 @@ def test_the_session_day_is_the_labs_local_day(conn: psycopg.Connection) -> None
 def test_generated_columns_are_computed_and_read_only(conn: psycopg.Connection) -> None:
     lab = Lab(conn)
     w = lab.world()
-    s = lab.session(w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "09:00"), ends_at=at("2024-02-05", "10:30"))
-    duration, lower, upper = row(conn, 
-        "SELECT duration_min, lower(during), upper(during) FROM lab.session WHERE session_id = %s", (s,))
+    s = lab.session(
+        w.study, w.participant, w.researcher, starts_at=at("2024-02-05", "09:00"), ends_at=at("2024-02-05", "10:30")
+    )
+    duration, lower, upper = row(
+        conn, "SELECT duration_min, lower(during), upper(during) FROM lab.session WHERE session_id = %s", (s,)
+    )
     assert duration == 90
     assert lower == at("2024-02-05", "09:00") and upper == at("2024-02-05", "10:30")
     with violates(conn, errors.GeneratedAlways):
@@ -283,15 +445,19 @@ def test_updated_at_moves_when_a_row_changes(conn: psycopg.Connection) -> None:
     lab = Lab(conn)
     w = lab.world()
     s = lab.session(w.study, w.participant, w.researcher)
-    conn.execute("UPDATE lab.session SET updated_at = '2000-01-01' WHERE session_id = %s", (s,))  # the trigger overrides it
+    conn.execute(
+        "UPDATE lab.session SET updated_at = '2000-01-01' WHERE session_id = %s", (s,)
+    )  # the trigger overrides it
     (stamp,) = row(conn, "SELECT updated_at FROM lab.session WHERE session_id = %s", (s,))
     assert stamp.year >= 2024
 
 
 def test_identity_ids_cannot_be_chosen_by_hand(conn: psycopg.Connection) -> None:
     with violates(conn, errors.GeneratedAlways):
-        conn.execute("INSERT INTO lab.study (study_id, code, title, started_on, target_n) "
-                     "VALUES (99, 'ABC-01', 'Some title', '2024-01-01', 5)")
+        conn.execute(
+            "INSERT INTO lab.study (study_id, code, title, started_on, target_n) "
+            "VALUES (99, 'ABC-01', 'Some title', '2024-01-01', 5)"
+        )
 
 
 def test_a_session_with_recordings_cannot_be_deleted(conn: psycopg.Connection) -> None:
@@ -323,9 +489,13 @@ def test_deleting_a_recording_deletes_its_channels_trials_and_features(conn: psy
     lab = Lab(conn)
     w = lab.world()
     rec = lab.recording(lab.booked_session(w), w.device)
-    conn.execute("INSERT INTO lab.channel (recording_id, channel_no, label, unit) VALUES (%s, 1, 'biceps', 'uV')", (rec,))
+    conn.execute(
+        "INSERT INTO lab.channel (recording_id, channel_no, label, unit) VALUES (%s, 1, 'biceps', 'uV')", (rec,)
+    )
     trial = lab.trial(rec)
-    conn.execute("INSERT INTO lab.trial_feature (trial_id, channel_no, feature_id, value) VALUES (%s, 1, 1, 12.5)", (trial,))
+    conn.execute(
+        "INSERT INTO lab.trial_feature (trial_id, channel_no, feature_id, value) VALUES (%s, 1, 1, 12.5)", (trial,)
+    )
     conn.execute("DELETE FROM lab.recording WHERE recording_id = %s", (rec,))
     for table in ("channel", "trial"):
         assert scalar(conn, f"SELECT count(*) FROM lab.{table} WHERE recording_id = %s", (rec,)) == 0
@@ -387,5 +557,6 @@ def test_the_database_does_not_check_that_a_feature_matches_the_modality(conn: p
     trial = lab.trial(lab.recording(lab.booked_session(w), w.device, modality="emg"))
     conn.execute("INSERT INTO lab.trial_feature VALUES (%s, 1, 11, 5.0)", (trial,))  # feature 11 is alpha power (EEG)
     from labtrack.checks import run_checks
+
     results = {check.name: n for check, n in run_checks(conn)}
     assert results["feature_of_wrong_modality"] == 1

@@ -16,10 +16,18 @@ from labtrack.seed import DATA_TABLES, SeedError, counts, seed
 from .golden import check_golden
 
 PRIMARY_KEYS = {
-    "study": "study_id", "researcher": "researcher_id", "participant": "participant_id",
-    "enrollment": "study_id, participant_id", "device": "device_id", "calibration": "calibration_id",
-    "session": "session_id", "session_device": "session_id, device_id", "recording": "recording_id",
-    "channel": "recording_id, channel_no", "trial": "trial_id", "trial_feature": "trial_id, channel_no, feature_id",
+    "study": "study_id",
+    "researcher": "researcher_id",
+    "participant": "participant_id",
+    "enrollment": "study_id, participant_id",
+    "device": "device_id",
+    "calibration": "calibration_id",
+    "session": "session_id",
+    "session_device": "session_id, device_id",
+    "recording": "recording_id",
+    "channel": "recording_id, channel_no",
+    "trial": "trial_id",
+    "trial_feature": "trial_id, channel_no, feature_id",
 }
 quiet = lambda _msg: None  # noqa: E731
 
@@ -27,9 +35,11 @@ quiet = lambda _msg: None  # noqa: E731
 def digests(conn: psycopg.Connection) -> dict[str, str]:
     """An md5 of every row of every data table (minus the created_at/updated_at stamps, which are the real clock)."""
     return {
-        table: scalar(conn, 
+        table: scalar(
+            conn,
             f"SELECT md5(coalesce(string_agg(((to_jsonb(t) - 'created_at') - 'updated_at')::text, E'\\n' ORDER BY {pk}), '')) "
-            f"FROM lab.{table} AS t")
+            f"FROM lab.{table} AS t",
+        )
         for table, pk in PRIMARY_KEYS.items()
     }
 
@@ -89,7 +99,7 @@ def test_seeding_twice_needs_reset(make_db: Callable[[], str]) -> None:
         with pytest.raises(SeedError, match="already has data"):
             seed(conn, scale="tiny", log=quiet)
         seed(conn, scale="tiny", do_reset=True, log=quiet)
-        assert digests(conn) == first          # identity counters restart too, so even the ids are the same
+        assert digests(conn) == first  # identity counters restart too, so even the ids are the same
 
 
 def test_seed_needs_the_latest_migration(make_db: Callable[[], str]) -> None:
@@ -122,11 +132,13 @@ def test_the_helper_schema_is_gone_and_the_materialized_view_is_filled(small_dsn
 def test_nothing_is_dated_after_the_seed_day_except_bookings(small_dsn: str) -> None:
     with connect(small_dsn) as conn:
         conn.execute("SET TIME ZONE 'America/Sao_Paulo'")
-        later_not_scheduled, scheduled_early, scheduled_too_far = row(conn, 
+        later_not_scheduled, scheduled_early, scheduled_too_far = row(
+            conn,
             """SELECT count(*) FILTER (WHERE starts_at::date > DATE '2026-10-31' AND status <> 'scheduled' AND status <> 'cancelled'),
                       count(*) FILTER (WHERE starts_at::date <= DATE '2026-10-31' AND status = 'scheduled'),
                       count(*) FILTER (WHERE starts_at::date > DATE '2026-10-31' + 42)
-               FROM lab.session""")
+               FROM lab.session""",
+        )
         assert (later_not_scheduled, scheduled_early, scheduled_too_far) == (0, 0, 0)
         assert scalar(conn, "SELECT count(*) FROM lab.recording WHERE recorded_at::date > DATE '2026-10-31'") == 0
 
@@ -141,17 +153,20 @@ def test_the_device_roster_is_the_answer_key_of_the_calibration_lesson(small_dsn
     with connect(small_dsn) as conn:
         conn.execute("SET labtrack.as_of = '2026-10-31'")
         got: dict[str, int] = dict(
-            conn.execute("SELECT calibration_status, count(*) FROM lab.v_device_status GROUP BY 1").fetchall())
+            conn.execute("SELECT calibration_status, count(*) FROM lab.v_device_status GROUP BY 1").fetchall()
+        )
         assert got == {"ok": 18, "due_soon": 1, "overdue": 3, "never_calibrated": 1, "retired": 1}
 
 
 def test_some_recordings_were_made_with_an_uncalibrated_device(small_dsn: str) -> None:
     with connect(small_dsn) as conn:
-        n = scalar(conn, 
+        n = scalar(
+            conn,
             """SELECT count(*) FROM lab.recording r
                WHERE NOT EXISTS (SELECT 1 FROM lab.calibration c
                                  WHERE c.device_id = r.device_id AND c.passed
-                                   AND c.performed_on <= r.recorded_at::date AND r.recorded_at::date < c.valid_until)""")
+                                   AND c.performed_on <= r.recorded_at::date AND r.recorded_at::date < c.valid_until)""",
+        )
         assert n > 0
 
 
@@ -162,7 +177,8 @@ def test_planted_effect_feedback_lowers_force_variability(small_dsn: str) -> Non
                FROM lab.trial_feature tf JOIN lab.trial t USING (trial_id) JOIN lab.recording r USING (recording_id)
                     JOIN lab.session s USING (session_id) JOIN lab.enrollment e USING (study_id, participant_id)
                WHERE tf.feature_id = 17
-               GROUP BY 1, 2""").fetchall()
+               GROUP BY 1, 2"""
+        ).fetchall()
         cv = {(fb, grp): v for fb, grp, v in rows}
         assert cv[(True, "intervention")] < cv[(True, "control")] < cv[(False, "control")]
         assert cv[(True, "intervention")] < cv[(False, "intervention")]
@@ -177,15 +193,18 @@ def test_planted_effect_fatigue_lowers_frequency_and_raises_amplitude(small_dsn:
                FROM lab.trial_feature tf JOIN lab.feature_def f USING (feature_id)
                     JOIN lab.trial t USING (trial_id)
                WHERE t.condition IN ('fatigue_pre', 'fatigue_post') AND f.name IN ('mnf', 'mdf', 'rms')
-               GROUP BY f.name"""):
+               GROUP BY f.name"""
+        ):
             by_feature[name] = post / pre
         assert by_feature["mnf"] < 0.92 and by_feature["mdf"] < 0.92 and by_feature["rms"] > 1.05
 
 
 def test_planted_effect_alpha_power_is_lower_with_the_large_stimulus(small_dsn: str) -> None:
     with connect(small_dsn) as conn:
-        small, large = row(conn, 
+        small, large = row(
+            conn,
             """SELECT avg(tf.value) FILTER (WHERE t.condition = 'stimulus_small'),
                       avg(tf.value) FILTER (WHERE t.condition = 'stimulus_large')
-               FROM lab.trial_feature tf JOIN lab.trial t USING (trial_id) WHERE tf.feature_id = 11""")
+               FROM lab.trial_feature tf JOIN lab.trial t USING (trial_id) WHERE tf.feature_id = 11""",
+        )
         assert large < small

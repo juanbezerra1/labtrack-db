@@ -34,12 +34,28 @@ DESIGN_NOTES = ROOT / "docs" / "design-notes.md"
 MEASUREMENTS = ROOT / "docs" / "measurements" / "explain-lab-large.json"
 
 TITLES = {
-    "en": {"glance": "At a glance", "schema": "The schema", "sizes": "Sizes", "planted": "What is planted in the data",
-           "queries": "Teaching queries", "lab": "EXPLAIN lab", "bi": "Dashboards", "cli": "Command line",
-           "layout": "Repository layout"},
-    "pt": {"glance": "Visão geral", "schema": "O esquema", "sizes": "Tamanhos", "planted": "O que foi plantado nos dados",
-           "queries": "Consultas didáticas", "lab": "Laboratório de EXPLAIN", "bi": "Dashboards",
-           "cli": "Linha de comando", "layout": "Estrutura do repositório"},
+    "en": {
+        "glance": "At a glance",
+        "schema": "The schema",
+        "sizes": "Sizes",
+        "planted": "What is planted in the data",
+        "queries": "Teaching queries",
+        "lab": "EXPLAIN lab",
+        "bi": "Dashboards",
+        "cli": "Command line",
+        "layout": "Repository layout",
+    },
+    "pt": {
+        "glance": "Visão geral",
+        "schema": "O esquema",
+        "sizes": "Tamanhos",
+        "planted": "O que foi plantado nos dados",
+        "queries": "Consultas didáticas",
+        "lab": "Laboratório de EXPLAIN",
+        "bi": "Dashboards",
+        "cli": "Linha de comando",
+        "layout": "Estrutura do repositório",
+    },
 }
 
 FENCE = re.compile(r"^```(\w*)\n(.*?)^```$", re.MULTILINE | re.DOTALL)
@@ -113,7 +129,7 @@ class Catalog:
     columns: dict[str, set[str]]
     primary_keys: dict[str, set[str]]
     single_unique: dict[str, set[str]]
-    foreign_keys: list[tuple[str, str, tuple[str, ...]]]      # (child table, parent table, child columns)
+    foreign_keys: list[tuple[str, str, tuple[str, ...]]]  # (child table, parent table, child columns)
     constraint_names: set[str]
     enum_types: int
     trigger_source: str
@@ -135,14 +151,19 @@ WHERE n.nspname = 'lab'
 @pytest.fixture(scope="module")
 def catalog(migrated_dsn: str) -> Catalog:
     with connect(migrated_dsn) as conn:
-        tables_ = {r[0] for r in conn.execute(
-            "SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-            "WHERE n.nspname = 'lab' AND c.relkind = 'r'")}
+        tables_ = {
+            r[0]
+            for r in conn.execute(
+                "SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = 'lab' AND c.relkind = 'r'"
+            )
+        }
         columns: dict[str, set[str]] = {t: set() for t in tables_}
         for table, column in conn.execute(
-                "SELECT c.relname, a.attname FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
-                "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                "WHERE n.nspname = 'lab' AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped"):
+            "SELECT c.relname, a.attname FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'lab' AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped"
+        ):
             columns[table].add(column)
         primary_keys: dict[str, set[str]] = {}
         single_unique: dict[str, set[str]] = {}
@@ -201,22 +222,33 @@ def test_the_er_diagram_matches_the_catalog(lang: str, catalog: Catalog) -> None
     entities, relationships = parse_diagram(diagrams[0])
     assert set(entities) == catalog.tables, "the diagram must draw every table of schema lab and nothing else"
     assert sorted((child, parent) for parent, child in relationships) == sorted(
-        (child, parent) for child, parent, _ in catalog.foreign_keys), "the arrows must be the foreign keys"
+        (child, parent) for child, parent, _ in catalog.foreign_keys
+    ), "the arrows must be the foreign keys"
     for table, attributes in entities.items():
         unknown = set(attributes) - catalog.columns[table]
         assert not unknown, f"{table}: the diagram draws columns that do not exist: {sorted(unknown)}"
         foreign = {c for child, _, cols in catalog.foreign_keys if child == table for c in cols}
         assert marked(attributes, "PK") == catalog.primary_keys[table], f"{table}: primary key"
         assert marked(attributes, "FK") == foreign, f"{table}: foreign key columns"
-        assert marked(attributes, "UK") == catalog.single_unique.get(table, set()), f"{table}: single-column unique keys"
+        assert marked(attributes, "UK") == catalog.single_unique.get(table, set()), (
+            f"{table}: single-column unique keys"
+        )
 
 
 # ---- the numbers ------------------------------------------------------------------------------
 @pytest.mark.parametrize("lang", LANGS)
 def test_the_numbers_at_a_glance_are_true(lang: str, catalog: Catalog) -> None:
     rows = first_table(read(lang), TITLES[lang]["glance"])
-    expected = [len(catalog.tables), len(catalog.foreign_keys), catalog.enum_types, len(load_migrations()),
-                len(load_queries()), len(load_lessons()), len(CHECKS), len(SCALES)]
+    expected = [
+        len(catalog.tables),
+        len(catalog.foreign_keys),
+        catalog.enum_types,
+        len(load_migrations()),
+        len(load_queries()),
+        len(load_lessons()),
+        len(CHECKS),
+        len(SCALES),
+    ]
     assert [int(number(row[1], lang)) for row in rows] == expected
 
 
@@ -292,23 +324,29 @@ def test_the_table_of_exports_matches_the_committed_csv_files(lang: str) -> None
 
 @pytest.mark.parametrize("lang", LANGS)
 def test_the_table_of_star_features_matches_the_catalogue_and_the_view(lang: str, small_dsn: str) -> None:
-    rows = tables(section(read(lang), TITLES[lang]["bi"]))[1][1]                 # the second table of the section
+    rows = tables(section(read(lang), TITLES[lang]["bi"]))[1][1]  # the second table of the section
     assert len(rows) == 6
     with connect(small_dsn) as conn:
         for cells in rows:
             column, modality, feature, unit = (cell.strip("`") for cell in cells)
-            assert conn.execute("SELECT modality::text, unit FROM lab.feature_def WHERE name = %s",
-                                (feature,)).fetchone() == (modality, unit), column
+            assert conn.execute(
+                "SELECT modality::text, unit FROM lab.feature_def WHERE name = %s", (feature,)
+            ).fetchone() == (modality, unit), column
             # the column is filled for exactly the trials of its modality
-            assert scalar(conn, f"SELECT count(*) FROM bi.fact_trial WHERE ({column} IS NULL) = (modality = %s)",
-                          (modality,)) == 0, column
+            assert (
+                scalar(
+                    conn, f"SELECT count(*) FROM bi.fact_trial WHERE ({column} IS NULL) = (modality = %s)", (modality,)
+                )
+                == 0
+            ), column
 
 
 @pytest.mark.parametrize("lang", LANGS)
 def test_the_number_of_uncalibrated_recordings_in_the_text_is_true(lang: str, small_dsn: str) -> None:
     text = " ".join(section(read(lang), TITLES[lang]["bi"]).split())
-    found = re.search(r"`false` for (\d+) of the (\d+) recordings" if lang == "en"
-                      else r"`false` em (\d+) das (\d+) gravações", text)
+    found = re.search(
+        r"`false` for (\d+) of the (\d+) recordings" if lang == "en" else r"`false` em (\d+) das (\d+) gravações", text
+    )
     assert found, "the sentence about device_calibrated is missing"
     with connect(small_dsn) as conn:
         flagged = scalar(conn, "SELECT count(*) FROM bi.fact_recording WHERE NOT device_calibrated")
@@ -333,8 +371,11 @@ def test_the_repository_layout_lists_what_is_there(lang: str) -> None:
     block = fenced(section(read(lang), TITLES[lang]["layout"]), "text")[0]
     listed = {line.split()[0].rstrip("/") for line in block.splitlines() if line.strip()}
     ignored = {"build", "dist", "venv", "env", "__pycache__"}
-    actual = {p.name for p in ROOT.iterdir()
-              if not p.name.startswith(".") and p.name not in ignored and not p.name.endswith(".egg-info")}
+    actual = {
+        p.name
+        for p in ROOT.iterdir()
+        if not p.name.startswith(".") and p.name not in ignored and not p.name.endswith(".egg-info")
+    }
     assert listed == actual
 
 
@@ -354,7 +395,7 @@ def test_every_transcript_is_what_the_tool_prints(lang: str, small_dsn: str) -> 
     for block in transcripts:
         first, _, shown = block.partition("\n")
         assert first.startswith("$ labtrack "), first
-        actual = run_cli(small_dsn, shlex.split(first[len("$ labtrack "):]))
+        actual = run_cli(small_dsn, shlex.split(first[len("$ labtrack ") :]))
         assert actual == normalise(shown), f"the output of '{first}' changed: paste the new output into the README"
 
 
@@ -379,7 +420,8 @@ def test_the_device_table_matches_the_device_status_view(lang: str, small_dsn: s
     with connect(small_dsn) as conn:
         conn.execute("SET labtrack.as_of = '2026-10-31'")
         actual: dict[str, str] = dict(
-            conn.execute("SELECT serial_no, calibration_status FROM lab.v_device_status").fetchall())
+            conn.execute("SELECT serial_no, calibration_status FROM lab.v_device_status").fetchall()
+        )
     for serial, status in stated.items():
         assert actual[serial] == status, serial
     assert {serial for serial, status in actual.items() if status != "ok"} <= set(stated)
@@ -388,7 +430,8 @@ def test_the_device_table_matches_the_device_status_view(lang: str, small_dsn: s
 @pytest.mark.parametrize("dsn_fixture", ["small_dsn", "medium_dsn"])
 @pytest.mark.parametrize("lang", LANGS)
 def test_query_4_finds_the_devices_that_skipped_calibration_rounds(
-        lang: str, dsn_fixture: str, request: pytest.FixtureRequest) -> None:
+    lang: str, dsn_fixture: str, request: pytest.FixtureRequest
+) -> None:
     skipped = set(re.findall(r"SN-[A-Z]+-\d+", first_table(read(lang), TITLES[lang]["planted"])[0][0]))
     query = next(q for q in load_queries() if q.number == 4)
     with connect(request.getfixturevalue(dsn_fixture)) as conn:
@@ -405,13 +448,14 @@ def test_relative_links_point_at_something(path: Path) -> None:
     text = without_code(path.read_text(encoding="utf-8"))
     for target in re.findall(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)", text):
         if re.match(r"[a-z]+:", target):
-            continue                                            # https://..., mailto:...
+            continue  # https://..., mailto:...
         file_part, _, anchor = target.partition("#")
         destination = path.parent / file_part if file_part else path
         assert destination.exists(), f"{path.name}: the link {target} points at nothing"
         if anchor and destination.suffix == ".md":
-            assert anchor in anchors(destination.read_text(encoding="utf-8")), \
+            assert anchor in anchors(destination.read_text(encoding="utf-8")), (
                 f"{path.name}: {destination.name} has no heading for #{anchor}"
+            )
 
 
 @pytest.mark.parametrize("path", DOCS, ids=lambda p: p.name)
@@ -441,7 +485,9 @@ def test_the_constraint_names_in_the_docs_exist(path: Path, catalog: Catalog) ->
     if path == DESIGN_NOTES or path.name.startswith("README"):
         assert named, f"{path.name} should have a table of constraint names"
     for name in named:
-        assert name in catalog.constraint_names or name in catalog.trigger_source, f"{name} is not a constraint of the schema"
+        assert name in catalog.constraint_names or name in catalog.trigger_source, (
+            f"{name} is not a constraint of the schema"
+        )
 
 
 def test_the_traps_are_as_many_as_the_readmes_say() -> None:

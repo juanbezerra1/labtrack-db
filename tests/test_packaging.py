@@ -27,8 +27,8 @@ def test_the_compose_file_is_the_database_the_tool_connects_to_by_default() -> N
         "POSTGRES_DB": default.path.lstrip("/"),
     }
     assert re.search(r"^\s+image: postgres:16$", compose, re.MULTILINE)
-    assert f'"${{LABTRACK_PORT:-{default.port}}}:5432"' in compose     # the override the README describes
-    assert "pg_isready" in compose                                     # what `docker compose up --wait` waits for
+    assert f'"${{LABTRACK_PORT:-{default.port}}}:5432"' in compose  # the override the README describes
+    assert "pg_isready" in compose  # what `docker compose up --wait` waits for
 
 
 def test_the_readme_describes_the_compose_file() -> None:
@@ -46,14 +46,20 @@ def test_the_ci_workflow_runs_what_the_readme_says() -> None:
     assert re.findall(r"^\s+runs-on: (\S+)$", workflow, re.MULTILINE) == ["ubuntu-latest"]
     assert re.search(r"^\s+LABTRACK_TEST_DSN: postgresql://\S+$", workflow, re.MULTILINE)
     steps = re.findall(r"^\s+run: (.+)$", workflow, re.MULTILINE)
-    assert steps == ['python -m pip install -e ".[dev]"', "ruff check .", "mypy src tests scripts", "pytest"]
+    assert steps == [
+        'python -m pip install -e ".[dev]"',
+        "ruff check .",
+        "ruff format --check .",
+        "mypy src tests scripts",
+        "pytest",
+    ]
 
 
 def test_the_oldest_python_in_ci_is_the_oldest_the_project_claims() -> None:
     pyproject = text("pyproject.toml")
     assert re.search(r'^requires-python = ">=3\.10"$', pyproject, re.MULTILINE)
-    assert re.search(r'^python_version = "3\.10"$', pyproject, re.MULTILINE)     # mypy
-    assert re.search(r'^target-version = "py310"$', pyproject, re.MULTILINE)     # ruff
+    assert re.search(r'^python_version = "3\.10"$', pyproject, re.MULTILINE)  # mypy
+    assert re.search(r'^target-version = "py310"$', pyproject, re.MULTILINE)  # ruff
 
 
 def test_the_dev_extras_are_what_ci_uses() -> None:
@@ -78,7 +84,18 @@ def test_git_is_told_to_keep_line_feeds_where_checksums_are_computed(pattern: st
 
 def test_no_text_file_of_the_repository_has_windows_line_endings() -> None:
     suffixes = {".csv", ".sql", ".json", ".md", ".py", ".yml", ".toml"}
-    skipped = {".git", ".venv", "venv", "env", "build", "dist", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
+    skipped = {
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        "build",
+        "dist",
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+    }
     offenders = [
         str(path.relative_to(ROOT))
         for path in ROOT.rglob("*")

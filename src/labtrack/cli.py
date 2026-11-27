@@ -114,9 +114,11 @@ def _cmd_explain_lab(args: argparse.Namespace) -> int:
         have = scale_of(conn)
         order = list(SCALES)
         if have == "tiny" or order.index(have) < order.index(chosen[0].needs):
-            print(f"warning: this lesson needs the {chosen[0].needs} scale; the database looks like {have}. "
-                  "On small tables the planner picks other plans.\n"
-                  f"(labtrack seed --scale {chosen[0].needs} --reset)\n")
+            print(
+                f"warning: this lesson needs the {chosen[0].needs} scale; the database looks like {have}. "
+                "On small tables the planner picks other plans.\n"
+                f"(labtrack seed --scale {chosen[0].needs} --reset)\n"
+            )
         result = run_lesson(conn, chosen[0], with_text=args.plans)
     print(render(result, plans=args.plans))
     return 1 if check_expectations(result) else 0
@@ -124,6 +126,7 @@ def _cmd_explain_lab(args: argparse.Namespace) -> int:
 
 def _cmd_export(args: argparse.Namespace) -> int:
     from pathlib import Path
+
     with connect(args.dsn) as conn:
         counts_by_file = export_csv(conn, Path(args.out))
     for name, n in counts_by_file.items():
@@ -137,6 +140,7 @@ def _cmd_dictionary(args: argparse.Namespace) -> int:
         text = generate_dictionary(conn)
     if args.out:
         from pathlib import Path
+
         Path(args.out).write_text(text, encoding="utf-8", newline="\n")
         print(f"written to {args.out}")
     else:
@@ -153,7 +157,8 @@ def _cmd_counts(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
-        prog="labtrack", description="LabTrack: PostgreSQL schema, migrations, seed and EXPLAIN lab.")
+        prog="labtrack", description="LabTrack: PostgreSQL schema, migrations, seed and EXPLAIN lab."
+    )
     ap.add_argument("--version", action="version", version=f"labtrack {__version__}")
     ap.add_argument("--dsn", help="connection string (default: $LABTRACK_DSN or the docker-compose database)")
     sub = ap.add_subparsers(dest="command", required=True)
@@ -166,8 +171,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("status", help="list the migrations and whether each one is applied")
     p.set_defaults(func=_cmd_status)
     p = sub.add_parser("seed", help="fill the database with synthetic, reproducible data")
-    p.add_argument("--scale", choices=list(SCALES), default="small",
-                   help="tiny 20, small 60, medium 200, large 1800 participants")
+    p.add_argument(
+        "--scale", choices=list(SCALES), default="small", help="tiny 20, small 60, medium 200, large 1800 participants"
+    )
     p.add_argument("--as-of", default=DEFAULT_AS_OF, help="the seed's 'today' (default %(default)s)")
     p.add_argument("--reset", action="store_true", help="delete existing data first")
     p.set_defaults(func=_cmd_seed)
@@ -177,8 +183,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("number", nargs="?", type=int, help="the query number (omit to list them)")
     p.add_argument("--variant", help="run only this variant")
     p.add_argument("--show", action="store_true", help="print the SQL before the result")
-    p.add_argument("--as-of", default=DEFAULT_AS_OF,
-                   help="what 'today' means for the lab's views (default %(default)s)")
+    p.add_argument(
+        "--as-of", default=DEFAULT_AS_OF, help="what 'today' means for the lab's views (default %(default)s)"
+    )
     p.set_defaults(func=_cmd_query)
     p = sub.add_parser("explain-lab", help="list the EXPLAIN lessons, or run one (it changes nothing: it rolls back)")
     p.add_argument("number", nargs="?", type=int, help="the lesson number (omit to list them)")
@@ -203,8 +210,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     except psycopg.OperationalError as exc:
-        print(f"error: could not connect to the database: {str(exc).strip()}\n"
-              f"       (DSN: {_safe_dsn(get_dsn(args.dsn))}; see the README, section Quick start)", file=sys.stderr)
+        print(
+            f"error: could not connect to the database: {str(exc).strip()}\n"
+            f"       (DSN: {_safe_dsn(get_dsn(args.dsn))}; see the README, section Quick start)",
+            file=sys.stderr,
+        )
         return 1
 
 

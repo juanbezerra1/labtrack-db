@@ -19,7 +19,8 @@ def test_the_queries_are_numbered_without_gaps() -> None:
 
 @pytest.mark.parametrize("query", QUERIES, ids=[q.stem for q in QUERIES])
 def test_query_result_matches_golden_and_variants_agree(
-        request: pytest.FixtureRequest, small_dsn: str, query: Query) -> None:
+    request: pytest.FixtureRequest, small_dsn: str, query: Query
+) -> None:
     results = []
     with connect(small_dsn) as conn:
         for name, sql in query.variants:

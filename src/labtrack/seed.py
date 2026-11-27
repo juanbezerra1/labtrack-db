@@ -19,8 +19,18 @@ DEFAULT_AS_OF = "2026-10-31"
 
 # Every table the seed fills, children first. feature_def is reference data loaded by a migration.
 DATA_TABLES = [
-    "trial_feature", "trial", "channel", "recording", "session_device", "session",
-    "enrollment", "calibration", "device", "participant", "researcher", "study",
+    "trial_feature",
+    "trial",
+    "channel",
+    "recording",
+    "session_device",
+    "session",
+    "enrollment",
+    "calibration",
+    "device",
+    "participant",
+    "researcher",
+    "study",
 ]
 
 
@@ -57,8 +67,10 @@ def seed(
     states = status(conn)
     changed = [f"{r['version']:04d}_{r['name']}" for r in states if r["state"] == "changed"]
     if changed:
-        raise SeedError(f"migration {', '.join(changed)} was changed after it was applied; "
-                        "recreate the database, or undo the edit (see labtrack status)")
+        raise SeedError(
+            f"migration {', '.join(changed)} was changed after it was applied; "
+            "recreate the database, or undo the edit (see labtrack status)"
+        )
     if any(r["state"] == "pending" for r in states):
         raise SeedError("the database is not at the latest migration; run: labtrack migrate")
     if has_data(conn):
@@ -84,7 +96,7 @@ def seed(
             raise SeedError(f"{path.name} failed: {exc}") from exc
         log(f"  {path.name:<22} {time.perf_counter() - started:6.1f} s")
     started = time.perf_counter()
-    conn.execute("VACUUM (ANALYZE)")   # needs autocommit: it cannot run inside a transaction block
+    conn.execute("VACUUM (ANALYZE)")  # needs autocommit: it cannot run inside a transaction block
     log(f"  {'VACUUM (ANALYZE)':<22} {time.perf_counter() - started:6.1f} s")
     log(f"  total {time.perf_counter() - total:.1f} s")
     return counts(conn)

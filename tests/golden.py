@@ -42,4 +42,6 @@ def check_golden(request: pytest.FixtureRequest, name: str, actual: Any) -> None
     if not path.exists():
         pytest.fail(f"no golden file {path.name}: run pytest --update-golden once, then review it with git")
     expected = json.loads(path.read_text(encoding="utf-8"))
-    assert actual == expected, f"result differs from tests/golden/{path.name}; if the change is intended: pytest --update-golden"
+    assert actual == expected, (
+        f"result differs from tests/golden/{path.name}; if the change is intended: pytest --update-golden"
+    )
